@@ -1,0 +1,53 @@
+Event Loop Architecture
+=======================
+
+   ┌───────────────────────────────────────────────────────────┐
+   │                        JavaScript Runtime                    │
+   │                                                              │
+   │  ┌────────────────────────────────────────────────────┐    │
+   │  │                    Call Stack                       │    │
+   │  │  ┌──────────────────────────────────────────────┐  │    │
+   │  │  │            Function Execution Context         │  │    │
+   │  │  └──────────────────────────────────────────────┘  │    │
+   │  │                      (LIFO)                        │    │
+   │  └────────────────────────────────────────────────────┘    │
+   │                             ↑                                │
+   │                             │                                │
+   │         ┌───────────────────┴───────────────────┐          │
+   │         │            Event Loop                  │          │
+   │         │    (Continuously checks and moves)    │          │
+   │         └───────────────────┬───────────────────┘          │
+   │                             │                                │
+   │      ┌──────────────────────┼──────────────────────┐       │
+   │      ↓                      ↓                      ↓       │
+   │  ┌─────────┐         ┌─────────────┐       ┌──────────┐   │
+   │  │Microtask│         │  Task Queue │       │   Heap   │   │
+   │  │  Queue  │         │ (Macrotask) │       │ (Memory) │   │
+   │  └─────────┘         └─────────────┘       └──────────┘   │
+   │   Promises,           setTimeout,           Objects,       │
+   │   queueMicrotask,     setInterval,          Variables      │
+   │   MutationObserver    I/O, UI events                       │
+   └───────────────────────────────────────────────────────────┘
+                                 │
+                                 ↓
+   ┌───────────────────────────────────────────────────────────┐
+   │                        Web APIs                            │
+   │   DOM, Timer, Network, File System (Browser Environment)   │
+   └───────────────────────────────────────────────────────────┘
+
+Execution Order:
+================
+1. Execute all synchronous code on call stack
+2. When stack is empty, check microtask queue
+3. Execute ALL microtasks until queue is empty
+4. Execute ONE macrotask from task queue
+5. Return to step 2
+
+Priority:
+=========
+Synchronous Code > Microtasks > Macrotasks
+
+Examples:
+=========
+Microtasks: Promise callbacks, async/await, queueMicrotask()
+Macrotasks: setTimeout, setInterval, I/O, UI rendering

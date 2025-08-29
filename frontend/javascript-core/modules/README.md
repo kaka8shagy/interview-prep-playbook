@@ -9,133 +9,54 @@
 
 ## Core Module Concepts
 
-### Module Patterns Evolution
-Historical patterns and modern solutions.
-Examples: `./code/module-patterns.js`
+### Fundamentals: CommonJS vs ES Modules
+Essential concepts with detailed mental model explanations.
+Core implementation patterns and execution timing differences.
+See: `./code/core-concepts.js`
 
-### CommonJS Fundamentals
-Node.js module system with require() and module.exports.
-Examples: `./code/commonjs-basics.js`
+### Real-World Patterns and Best Practices  
+Production-ready module design patterns and export strategies.
+Cross-environment compatibility and performance optimization.
+See: `./code/practical-patterns.js`
 
-### ES Module Syntax
-Modern import/export patterns and variations.
-Examples: `./code/esm-syntax.js`
+### Interview Problems and Solutions
+Common module-related interview questions with detailed solutions.
+Module system implementation, circular dependencies, tree shaking.
+See: `./code/interview-problems.js`
 
-### Dynamic Imports
-Runtime module loading with import() function.
-Examples: `./code/dynamic-imports.js`
+### Advanced Concepts and Bundling
+Dynamic imports, code splitting, module federation, and performance.
+Modern bundling strategies and micro-frontend patterns.
+See: `./code/advanced-concepts.js`
 
-### Export Comparison
-Understanding exports vs module.exports differences.
-Comparison: `./code/exports-vs-module-exports.js`
+## Key Interview Topics
 
-### Default vs Named Exports
-Different export strategies and their use cases.
-Analysis: `./code/default-vs-named.js`
+### Module Loading and Execution
+- Dependency resolution algorithms
+- Execution timing differences between CommonJS and ES modules
+- Module wrapper functions and scope isolation
 
-### Circular Dependencies
-Detection, handling, and resolution strategies.
-Solutions: `./code/circular-dependencies.js`
+### Advanced Patterns  
+- Circular dependency detection and resolution
+- Tree shaking and dead code elimination
+- Dynamic imports and code splitting strategies
 
-### Tree Shaking
-Dead code elimination and optimization techniques.
-Implementation: `./code/tree-shaking.js`
+### Performance and Optimization
+- Bundle splitting strategies
+- Module federation for micro-frontends  
+- Performance monitoring and optimization
 
-### Code Splitting
-Module chunking and lazy loading patterns.
-Examples: `./code/code-splitting.js`
+## Critical Concepts to Master
 
-## Environment Differences
+### Module System Trade-offs
+- When to use CommonJS vs ES Modules
+- Static vs dynamic analysis implications
+- Bundle size and loading performance impact
 
-### Browser vs Node.js
-Key differences in module loading and global objects.
-Comparison: `./code/browser-vs-node.js`
-
-### Module Resolution
-How modules are found and loaded in different environments.
-Algorithm: `./code/module-resolution.js`
-
-## Module Bundlers
-
-### Webpack & Rollup Basics
-Configuration, plugins, and optimization strategies.
-Examples: `./code/webpack-rollup-basics.js`
-
-## Interview Focus
-
-### System Comparison
-Complete CommonJS vs ES Modules analysis for interviews.
-Deep dive: `./code/interview-module-comparison.js`
-
-## Common Interview Questions
-
-### Question 1: Module Loading Order
-Explain how modules are loaded and executed.
-- Focus: Understanding execution timing
-- Key concepts: Hoisting, dependency resolution
-
-### Question 2: Circular Dependency Resolution
-How to detect and handle circular imports.
-- Solution approach: Dependency tracking
-- Implementation: `./code/circular-dependencies.js`
-
-### Question 3: Tree Shaking Implementation
-Explain dead code elimination process.
-- Key concepts: Static analysis, side effects
-- Example: `./code/tree-shaking.js`
-
-### Question 4: Module Bundler Design
-Design a basic module bundler.
-- Focus: Dependency graph, code transformation
-- Related: `./code/webpack-rollup-basics.js`
-
-## Best Practices
-
-### DO:
-- Use ES modules for new projects
-- Prefer named exports for utilities
-- Avoid circular dependencies
-- Consider tree shaking implications
-- Implement proper error handling
-
-### DON'T:
-- Mix module systems unnecessarily
-- Create overly complex dependency trees
-- Export everything as default
-- Ignore bundle size implications
-- Forget about lazy loading opportunities
-
-## Common Pitfalls
-
-### Pitfall 1: Export Confusion
-Mixing exports and module.exports in CommonJS.
-Solution: `./code/exports-vs-module-exports.js`
-
-### Pitfall 2: Dynamic Import Timing
-Not handling async nature of dynamic imports.
-Proper handling: `./code/dynamic-imports.js`
-
-### Pitfall 3: Circular Dependencies
-Creating unintended dependency cycles.
-Detection: `./code/circular-dependencies.js`
-
-### Pitfall 4: Tree Shaking Issues
-Writing code that prevents effective tree shaking.
-Optimization: `./code/tree-shaking.js`
-
-## Performance Considerations
-
-### Bundle Size Optimization
-- Use tree shaking effectively
-- Implement code splitting
-- Minimize bundle dependencies
-- Analyze bundle composition
-
-### Loading Performance
-- Lazy load non-critical modules
-- Preload important modules
-- Use dynamic imports strategically
-- Optimize module resolution paths
+### Real-World Implementation
+- Module design patterns for scalable applications
+- Cross-environment compatibility strategies
+- Error handling and fallback mechanisms
 
 ## Related Topics
 

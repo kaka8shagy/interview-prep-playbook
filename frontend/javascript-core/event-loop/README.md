@@ -9,48 +9,43 @@
 
 ## Core Concepts
 
-### The Architecture
+### Event Loop Fundamentals
+Essential execution order concepts with detailed mental model explanations.
+Microtask vs macrotask priority, synchronous execution phases, and debugging techniques.
+See: `./code/fundamentals.js`
+
+### Advanced Async Patterns  
+Complex async/await behaviors and Promise interactions with event loop.
+Performance optimization techniques and debugging strategies for async flows.
+See: `./code/async-patterns.js`
+
+### Performance Optimization
+Non-blocking processing patterns and race condition prevention.
+Time-based chunking, yielding strategies, and request cancellation techniques.
+See: `./code/performance-optimization.js`
+
+### Interview Problems and Solutions
+Common event loop interview questions with step-by-step solutions.
+Execution order prediction, polyfill implementation, and debugging scenarios.
+See: `./code/interview-problems.js`
+
+## Architecture Overview
 
 The JavaScript runtime consists of:
 1. **Call Stack**: Executes functions (LIFO)
-2. **Heap**: Memory allocation for objects
+2. **Heap**: Memory allocation for objects  
 3. **Task Queue** (Macrotask): setTimeout, setInterval, I/O
 4. **Microtask Queue**: Promises, queueMicrotask, MutationObserver
 5. **Event Loop**: Orchestrates execution
 
 See complete architecture diagram: `./diagrams/event-loop-architecture.txt`
 
-### How It Works
+## Execution Priority Rules
 
-The event loop continuously monitors the call stack and queues:
-1. Executes all synchronous code on the call stack
-2. When stack is empty, processes all microtasks
-3. Executes one macrotask
-4. Returns to processing microtasks
-
-This cycle ensures non-blocking execution while maintaining order.
-
-### Execution Order
-
-Understanding execution order is crucial for debugging async code:
 1. Synchronous code always runs first
 2. All microtasks run before any macrotask
 3. Only one macrotask runs per loop iteration
 4. Microtasks can queue more microtasks
-
-## Code Examples
-
-### Basic Examples
-- Simple execution order: `./code/basic-example.js`
-- Nested promises and timers: `./code/nested-promises-timers.js`
-
-### Advanced Patterns
-- Async/await puzzle: `./code/async-await-puzzle.js`
-- Microtask exhaustion: `./code/microtask-exhaustion.js`
-
-### Real-World Applications
-- Non-blocking processing: `./code/non-blocking-processing.js`
-- Performance optimization: `./code/performance-optimization.js`
 
 ## Common Pitfalls
 
@@ -66,55 +61,34 @@ Each await point creates a microtask, which can affect execution order in unexpe
 ### Pitfall 4: Promise executor runs synchronously
 The function passed to new Promise() runs immediately, not asynchronously.
 
-## Interview Questions
+## Key Interview Topics
 
-### Question 1: Output Prediction
-What will be the output of the code?
-- Problem: `./code/interview-question-1.js`
-- Tests understanding of promise executor and event loop timing
+### Execution Order Mastery
+- Predict output of complex async/sync code combinations
+- Explain why certain callbacks run before others
+- Demonstrate understanding of microtask vs macrotask priority
 
-### Question 2: Fix the Race Condition
-Common async data fetching problem:
-- Problem and solutions: `./code/race-condition-fix.js`
-- Multiple approaches to handle asynchronous operations correctly
+### Performance and Optimization  
+- Identify and fix event loop blocking issues
+- Implement non-blocking processing patterns
+- Handle race conditions in async operations
 
-### Question 3: Implement setImmediate
-Create a setImmediate polyfill using browser APIs:
-- Implementation: `./code/setimmediate-polyfill.js`
-- Shows different strategies using Promise, MessageChannel, and postMessage
+### Implementation Challenges
+- Create polyfills for event loop APIs
+- Debug timing-related issues in async code
+- Design efficient async processing systems
 
-## Common Interview Mistakes
+## Critical Concepts to Master
 
-### Execution Order Confusion
-- Not understanding that Promise executors run synchronously
-- Thinking setTimeout(fn, 0) runs immediately
-- Not knowing microtasks always run before macrotasks
+### Execution Order Rules
+- Promise executors run synchronously
+- All microtasks before any macrotask
+- Each await creates a microtask scheduling point
 
-### Async/Await Misunderstanding
-- Not realizing async functions return Promises immediately
-- Confusion about when await actually pauses execution
-- Not understanding each await creates a microtask
-
-### Performance Issues
-- Blocking the event loop with synchronous operations
-- Not using chunking for large data processing
-- Creating infinite microtask loops
-
-## Performance Considerations
-
-### Long-Running Operations
-For CPU-intensive tasks, consider:
-- Web Workers for parallel processing
-- Chunking with setTimeout for yielding
-- requestIdleCallback for non-critical work
-
-See implementation: `./code/performance-optimization.js`
-
-### Optimization Strategies
-1. **Chunking**: Break large tasks into smaller pieces
-2. **Debouncing/Throttling**: Limit function execution frequency
-3. **Web Workers**: Move heavy computation off main thread
-4. **requestAnimationFrame**: Smooth animations synced with browser
+### Performance Implications  
+- Long synchronous operations block the event loop
+- Microtask loops can starve macrotasks
+- Proper yielding prevents UI freezing
 
 ## Debugging Tips
 

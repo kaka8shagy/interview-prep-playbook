@@ -9,75 +9,25 @@
 
 ## Core Concepts
 
-### What are Generators?
-Special functions that can pause execution and resume later. Defined with function* syntax and use yield to pause.
+### Generator and Iterator Fundamentals
+Essential concepts with detailed mental model explanations.
+Generator syntax, iterator protocol, bidirectional communication, and integration patterns.
+See: `./code/fundamentals.js`
 
-Basic syntax: `./code/generator-basics.js`
+### Advanced Generator Patterns
+Yield delegation, lazy evaluation, infinite sequences, and performance optimization.
+Complex composition patterns and memory-efficient processing techniques.
+See: `./code/advanced-patterns.js`
 
-### What are Iterators?
-Objects implementing the Iterator protocol with a next() method returning {value, done}.
+### Practical Applications  
+Real-world applications including state machines, tree traversal, and async flow.
+Data processing pipelines, async generators, and production-ready patterns.
+See: `./code/practical-applications.js`
 
-Iterator protocol: `./code/iterator-protocol.js`
-
-### Generator Functions
-Functions that return generator objects (which are iterators).
-
-Creation patterns: `./code/generator-functions.js`
-
-## Iterator Protocol
-
-### Symbol.iterator
-Well-known symbol for making objects iterable.
-Implementation: `./code/symbol-iterator.js`
-
-### Custom Iterators
-Building your own iterable objects.
-Examples: `./code/custom-iterators.js`
-
-### Built-in Iterables
-Arrays, Strings, Maps, Sets are iterable.
-Usage: `./code/builtin-iterables.js`
-
-## Generator Features
-
-### Yield Expression
-Pauses generator and returns value.
-Examples: `./code/yield-expression.js`
-
-### Yield Delegation
-yield* delegates to another generator.
-Examples: `./code/yield-delegation.js`
-
-### Return and Throw
-Controlling generator flow.
-Examples: `./code/return-throw.js`
-
-### Two-way Communication
-Passing values into generators.
-Examples: `./code/two-way-communication.js`
-
-## Common Patterns
-
-### Infinite Sequences
-Generating endless sequences lazily.
-Implementation: `./code/infinite-sequences.js`
-
-### State Machines
-Using generators for state management.
-Implementation: `./code/state-machines.js`
-
-### Tree Traversal
-Traversing data structures with generators.
-Implementation: `./code/tree-traversal.js`
-
-### Async Flow Control
-Managing async operations (pre async/await).
-Implementation: `./code/async-flow.js`
-
-## Advanced Topics
-
-### Async Generators
-Generators that yield promises.
+### Interview Problems and Solutions
+Common generator interview questions with comprehensive solutions.
+Fibonacci implementations, custom iterators, performance analysis, and async control flow.
+See: `./code/interview-problems.js`
 Examples: `./code/async-generators.js`
 
 ### Async Iteration

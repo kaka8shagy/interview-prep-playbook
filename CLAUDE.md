@@ -23,6 +23,39 @@
 - Markdown files: `concept-name.md`
 - Test files: `feature-name.test.ext`
 
+## Code Example Standards
+
+### Quality over Quantity Principle
+- **Maximum 3-5 focused code examples per topic**
+- Each example must serve a distinct learning purpose
+- Prioritize depth over breadth - one excellent example beats five mediocre ones
+- Examples should progress logically: Basic → Practical → Interview-focused
+
+### Comment-Heavy Code Philosophy
+- **30-50% of code should be comments** explaining the "why" and "how"
+- Comments should teach concepts through implementation details
+- Include mental model explanations and step-by-step thinking process
+- Every non-trivial line needs explanatory comments
+- Show decision-making process in comments
+
+### Zero Redundancy Principle
+- **No concept repetition** between markdown files and code files
+- Markdown focuses on: context, use cases, trade-offs, pitfalls, when to use
+- Code focuses on: implementation details, mental models, step-by-step logic
+- Cross-reference between theory and implementation instead of duplicating
+
+### Example Categories per Topic
+- **core-concept.js** - Essential implementation with extensive explanatory comments
+- **practical-usage.js** - Real-world pattern with decision-making comments
+- **interview-solution.js** - Problem-solving approach with thought process comments
+- **edge-cases.js** (optional) - Complex scenarios with debugging insights
+
+### Code Teaching Requirements
+- Each code file should be **50-150 lines maximum** including comments
+- Code should demonstrate multiple related concepts in one cohesive example
+- Focus on understanding over memorization
+- Comments guide the reader's learning journey through the implementation
+
 ## Markdown Structure Rules
 
 1. Every markdown file starts with single H1 (#) title
@@ -170,22 +203,65 @@ topic-name/
 ### Code File Standards
 ```javascript
 /**
- * File: example-basic.js
- * Description: Basic implementation of [feature]
+ * File: core-concept.js
+ * Description: Core implementation demonstrating [concept] with detailed explanations
+ * 
+ * Learning objectives:
+ * - Understand the mental model behind [concept]
+ * - See step-by-step implementation logic  
+ * - Learn common patterns and edge cases
+ * 
  * Time Complexity: O(n)
  * Space Complexity: O(1)
  */
 
-// Implementation here
-function example() {
-  // Code with comments
+// This function demonstrates [concept] by [approach]
+// We use [technique] because [reasoning]
+function coreExample(input) {
+  // Step 1: [Explain what this step does and why]
+  // The mental model here is [explanation]
+  const step1 = processInput(input);
+  
+  // Step 2: [Explain the logic and decision process]  
+  // We check this condition because [reasoning]
+  if (step1.needsProcessing) {
+    // [Explain why this approach is chosen over alternatives]
+    return handleProcessing(step1);
+  }
+  
+  // Step 3: [Explain the fallback logic]
+  // Default case handles [specific scenarios]
+  return step1.defaultValue;
 }
 
-// Example usage
-console.log(example(input));
+// Helper function demonstrating [related concept]
+// This pattern is useful when [use case explanation]
+function processInput(input) {
+  // [Explain the validation logic and edge cases]
+  if (!input || typeof input !== 'expected-type') {
+    // We throw here instead of returning null because [reasoning]
+    throw new Error('Invalid input: [explanation]');
+  }
+  
+  // [Explain the transformation logic step by step]
+  return {
+    processed: true,
+    needsProcessing: input.length > 0,
+    defaultValue: input.defaultValue || 'fallback'
+  };
+}
 
-// Export for testing
-module.exports = { example };
+// Example usage demonstrating different scenarios
+// Each example shows [specific learning point]
+console.log('Basic usage:', coreExample({length: 5}));
+console.log('Edge case:', coreExample({}));
+
+// Export for testing and reuse
+// Following [module pattern] for [specific reason]
+module.exports = { 
+  coreExample,
+  processInput  // Exported for unit testing edge cases
+};
 ```
 
 ## Reference Format

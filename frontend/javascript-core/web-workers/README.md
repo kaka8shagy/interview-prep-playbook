@@ -1,305 +1,201 @@
 # JavaScript Web Workers
 
 ## Quick Summary
-- Web Workers run JavaScript in background threads
-- Enable parallel execution without blocking main thread
-- Communicate via message passing (postMessage)
-- No direct access to DOM or main thread variables
-- Types: Dedicated, Shared, Service Workers
+- Web Workers run JavaScript in background threads without blocking the UI
+- Enable true parallel execution for CPU-intensive tasks
+- Communicate through structured cloning and message passing (postMessage)
+- Cannot access DOM directly - workers are completely isolated from main thread
+- Types: Dedicated (private), Shared (between tabs), Service (network proxy)
 
-## Core Concepts
+## Implementation Files
 
-### What are Web Workers?
-Scripts that run in background threads, separate from main UI thread. Enable concurrent execution for CPU-intensive tasks.
+### Core Concepts
+- **Fundamentals**: `./code/fundamentals.js`
+  - Worker feature detection and browser support
+  - Basic worker creation and message communication
+  - Worker lifecycle management and cleanup
+  - Error handling and timeout patterns
 
-Basic usage: `./code/worker-basics.js`
+### Advanced Architecture  
+- **Advanced Patterns**: `./code/advanced-patterns.js`
+  - Worker pool implementation for concurrent processing
+  - Shared worker patterns for cross-tab communication
+  - Pipeline processing for multi-stage operations
+  - Map-Reduce pattern for parallel data processing
 
-### Worker Types
-1. **Dedicated Workers**: Private to creating script
-2. **Shared Workers**: Shared between multiple scripts
-3. **Service Workers**: Act as proxy between web app and network
+### Real-World Applications
+- **Practical Applications**: `./code/practical-applications.js`
+  - Image processing with transferable objects
+  - Background data synchronization with retry logic
+  - Real-time stream processing with buffering
+  - Large dataset processing (CSV, JSON, statistics)
 
-Types overview: `./code/worker-types.js`
+### Interview Preparation
+- **Interview Problems**: `./code/interview-problems.js`
+  - Prime number calculator with progress tracking
+  - Multi-filter image processing pipeline
+  - Background task scheduler with dependencies
+  - Performance comparison utilities
 
-### Message Passing
-Workers communicate with main thread through structured cloning.
+## Core Worker Concepts
 
-Communication: `./code/message-passing.js`
+### Worker Creation and Communication
+```javascript
+// Creating a worker from script string
+const workerScript = `
+  self.addEventListener('message', function(e) {
+    const result = performTask(e.data);
+    self.postMessage(result);
+  });
+`;
 
-## Dedicated Workers
+const blob = new Blob([workerScript], { type: 'application/javascript' });
+const worker = new Worker(URL.createObjectURL(blob));
 
-### Creating Workers
-Basic worker creation and lifecycle.
-Example: `./code/dedicated-worker.js`
+worker.postMessage(data);
+worker.addEventListener('message', (e) => console.log(e.data));
+```
 
-### Worker Script
-What goes inside a worker script.
-Example: `./code/worker-script.js`
+### Message Passing Patterns
+1. **Fire-and-forget**: Send data without expecting response
+2. **Request-response**: Send data and wait for specific response
+3. **Streaming**: Continuous data flow between threads
+4. **Broadcast**: One-to-many communication patterns
 
-### Error Handling
-Managing worker errors and exceptions.
-Example: `./code/worker-errors.js`
+### Data Transfer Methods
+```javascript
+// Structured cloning (default - copies data)
+worker.postMessage(largeObject);
 
-### Terminating Workers
-Properly shutting down workers.
-Example: `./code/worker-termination.js`
+// Transferable objects (zero-copy - transfers ownership)
+worker.postMessage(arrayBuffer, [arrayBuffer]);
 
-## Advanced Features
+// Shared memory (experimental)
+const sharedBuffer = new SharedArrayBuffer(1024);
+worker.postMessage(sharedBuffer);
+```
 
-### Shared Array Buffer
-Sharing memory between threads (experimental).
-Example: `./code/shared-array-buffer.js`
+## Worker Types
 
-### Transferable Objects
-Transfer ownership instead of copying.
-Example: `./code/transferable-objects.js`
+### Dedicated Workers
+- Private to the creating script
+- One-to-one communication
+- Most common type for parallel processing
 
-### Worker Pools
-Managing multiple workers efficiently.
-Implementation: `./code/worker-pools.js`
+### Shared Workers  
+- Shared between multiple tabs/windows
+- Communication through message ports
+- Useful for cross-tab coordination
 
-### Dynamic Worker Creation
-Creating workers from strings.
-Example: `./code/dynamic-workers.js`
-
-## Common Use Cases
-
-### CPU-Intensive Tasks
-Prime number calculation, sorting, etc.
-Implementation: `./code/cpu-intensive.js`
-
-### Image Processing
-Canvas operations in workers.
-Implementation: `./code/image-processing.js`
-
-### Data Processing
-Large dataset manipulation.
-Implementation: `./code/data-processing.js`
-
-### Background Sync
-Periodic background operations.
-Implementation: `./code/background-sync.js`
-
-### WebSocket Handling
-Network operations in workers.
-Implementation: `./code/websocket-worker.js`
-
-## Shared Workers
-
-### Creating Shared Workers
-Workers shared between tabs/windows.
-Example: `./code/shared-workers.js`
-
-### Port Communication
-Message ports for shared worker communication.
-Example: `./code/port-communication.js`
-
-### Cross-Tab Communication
-Communication between browser tabs.
-Implementation: `./code/cross-tab.js`
-
-## Service Workers
-
-### Basic Service Worker
-Intercepting network requests.
-Example: `./code/service-worker-basics.js`
-
-### Caching Strategies
-Offline functionality implementation.
-Example: `./code/caching-strategies.js`
-
-### Background Sync
-Syncing when connection restored.
-Example: `./code/service-worker-sync.js`
-
-## Interview Questions
-
-### Question 1: Prime Calculator
-Build prime number calculator with workers.
-- Solution: `./code/interview-prime-calculator.js`
-- Tests basic worker usage
-
-### Question 2: Image Filter
-Implement image filtering with workers.
-- Solution: `./code/interview-image-filter.js`
-- Tests transferable objects
-
-### Question 3: Worker Pool
-Build efficient worker management system.
-- Solution: `./code/interview-worker-pool.js`
-- Tests advanced patterns
-
-### Question 4: Progress Tracking
-Implement task progress with workers.
-- Solution: `./code/interview-progress-tracking.js`
-- Tests communication patterns
+### Service Workers
+- Act as network proxy
+- Enable offline functionality
+- Handle background sync and push notifications
 
 ## Performance Considerations
 
-### Worker Overhead
-Cost of creating and managing workers.
-Analysis: `./code/worker-overhead.js`
+### When to Use Workers
+- **DO**: CPU-intensive calculations, large data processing, background tasks
+- **DON'T**: Simple operations, frequent small calculations, DOM manipulation
+
+### Optimization Strategies
+- Use transferable objects for large data (ArrayBuffer, MessagePort)
+- Implement worker pools to manage concurrency
+- Batch operations to reduce message overhead
+- Cache workers to avoid creation overhead
 
 ### Memory Management
-Preventing memory leaks in workers.
-Best practices: `./code/memory-management.js`
-
-### Task Granularity
-When to use workers vs main thread.
-Guidelines: `./code/task-granularity.js`
-
-## Limitations and Constraints
-
-### DOM Access
-Workers cannot access DOM directly.
-Workarounds: `./code/dom-limitations.js`
-
-### Same-Origin Policy
-Worker script must be same-origin.
-Solutions: `./code/same-origin.js`
-
-### Browser Support
-Feature detection and fallbacks.
-Implementation: `./code/browser-support.js`
-
-### Debugging Challenges
-Debugging worker code.
-Techniques: `./code/debugging-workers.js`
+- Always terminate workers when done
+- Clean up blob URLs to prevent memory leaks
+- Monitor worker count - too many can hurt performance
+- Use SharedArrayBuffer for memory efficiency when available
 
 ## Common Pitfalls
 
-### Pitfall 1: Blocking Operations
-Long-running tasks blocking worker.
-Solution: `./code/pitfall-blocking.js`
+### Serialization Costs
+```javascript
+// Expensive - large object copied
+worker.postMessage(hugeObject);
 
-### Pitfall 2: Memory Leaks
-Unreleased worker references.
-Solution: `./code/pitfall-memory.js`
+// Better - transfer ownership
+worker.postMessage(arrayBuffer, [arrayBuffer]);
+```
 
-### Pitfall 3: Serialization Cost
-Expensive data transfer.
-Solution: `./code/pitfall-serialization.js`
+### Worker Lifecycle Issues
+```javascript
+// Bad - creates new worker every time
+function processData(data) {
+  const worker = new Worker('processor.js');
+  return new Promise(resolve => {
+    worker.onmessage = e => resolve(e.data);
+    worker.postMessage(data);
+  });
+}
 
-### Pitfall 4: Error Propagation
-Unhandled worker errors.
-Solution: `./code/pitfall-errors.js`
+// Good - reuse worker
+const worker = new Worker('processor.js');
+function processData(data) {
+  return new Promise(resolve => {
+    worker.onmessage = e => resolve(e.data);
+    worker.postMessage(data);
+  });
+}
+```
 
-## Modern APIs
+### Error Handling
+- Always handle worker errors and message errors
+- Implement timeouts for worker operations
+- Have fallback strategies for worker failures
+- Validate data before sending to workers
 
-### Worker Modules
-ES6 modules in workers.
-Example: `./code/worker-modules.js`
+## Interview Topics
 
-### OffscreenCanvas
-Canvas rendering in workers.
-Example: `./code/offscreen-canvas.js`
+### Common Questions
+1. **When to use workers?** - CPU-intensive tasks, non-blocking operations
+2. **Communication patterns?** - postMessage, structured cloning, transferables
+3. **Performance implications?** - Creation overhead, serialization costs
+4. **Limitations?** - No DOM access, same-origin policy, browser support
 
-### Atomic Operations
-Thread-safe operations.
-Example: `./code/atomic-operations.js`
+### Coding Challenges
+- Build parallel sorting algorithm
+- Implement image processing pipeline
+- Create background task scheduler
+- Design worker pool for concurrent processing
 
-## Real-World Patterns
+## Browser Support and Alternatives
 
-### Task Queue
-Distributed task processing.
-Implementation: `./code/task-queue.js`
+### Feature Detection
+```javascript
+const workerSupport = {
+  worker: typeof Worker !== 'undefined',
+  sharedWorker: typeof SharedWorker !== 'undefined', 
+  serviceWorker: 'serviceWorker' in navigator
+};
+```
 
-### Map-Reduce
-Parallel data processing.
-Implementation: `./code/map-reduce.js`
-
-### Background Computation
-Non-blocking calculations.
-Implementation: `./code/background-computation.js`
-
-### Stream Processing
-Processing data streams.
-Implementation: `./code/stream-processing.js`
-
-## Testing Workers
-
-### Unit Testing
-Testing worker functionality.
-Framework: `./code/worker-testing.js`
-
-### Mocking Workers
-Simulating workers in tests.
-Implementation: `./code/worker-mocks.js`
-
-### Performance Testing
-Measuring worker performance.
-Benchmarks: `./code/performance-testing.js`
+### Fallback Strategies
+- Graceful degradation to main thread processing
+- Use setTimeout/setInterval for pseudo-threading
+- Implement task splitting for long-running operations
 
 ## Best Practices
 
-### DO:
-- Use for CPU-intensive tasks
-- Implement proper error handling
-- Clean up workers when done
-- Use transferable objects for large data
-- Keep worker scripts simple and focused
+**DO:**
+- Use workers for CPU-intensive tasks only
+- Implement proper error handling and timeouts
+- Clean up workers and blob URLs when done
+- Use transferable objects for large data transfers
+- Consider worker pools for managing concurrency
 
-### DON'T:
-- Create too many workers
-- Use for simple operations
-- Forget to terminate workers
-- Share complex objects
-- Rely on worker availability
-
-## Framework Integration
-
-### React Workers
-Integrating workers with React.
-Patterns: `./code/react-workers.js`
-
-### Vue Workers
-Worker patterns in Vue.js.
-Examples: `./code/vue-workers.js`
-
-### Worker Libraries
-Popular worker management libraries.
-Overview: `./code/worker-libraries.js`
-
-## Security Considerations
-
-### Content Security Policy
-CSP implications for workers.
-Configuration: `./code/csp-workers.js`
-
-### Data Validation
-Validating worker messages.
-Implementation: `./code/data-validation.js`
-
-### Sandboxing
-Isolating worker execution.
-Techniques: `./code/worker-sandboxing.js`
-
-## Common Interview Mistakes
-
-### Conceptual Errors
-- Not understanding thread isolation
-- Expecting synchronous communication
-- Missing worker lifecycle management
-- Forgetting about serialization costs
-
-### Implementation Errors
-- Creating workers in loops
-- Not handling worker errors
-- Blocking main thread waiting for worker
-- Inefficient data transfer patterns
-
-## Practice Problems
-
-1. Build parallel sorting algorithm
-2. Implement background file processing
-3. Create real-time data analyzer
-4. Build distributed hash calculator
-5. Implement progress-aware batch processor
+**DON'T:**
+- Create workers for simple operations
+- Forget to terminate workers when finished
+- Access DOM from worker context
+- Create excessive numbers of workers
+- Rely on workers for small, frequent operations
 
 ## Related Topics
-
-- [Event Loop](../event-loop/README.md)
-- [Promises](../promises/README.md)
-- [Performance](../../performance/README.md)
+- [Event Loop and Concurrency](../event-loop/README.md)
+- [Promises and Async Programming](../promises/README.md)
 - [Memory Management](../memory-management/README.md)
-- [Service Workers](../service-workers/README.md)
+- [Performance Optimization](../../performance/README.md)

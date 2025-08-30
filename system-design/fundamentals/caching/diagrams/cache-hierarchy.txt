@@ -1,0 +1,284 @@
+Multi-Level Cache Hierarchy Architectures
+
+1. Traditional Cache Hierarchy (CPU-style)
+┌─────────────────────────────────────────────────────────────┐
+│                      Application Server                     │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │     L1      │  │     L2      │  │     L3      │         │
+│  │  (Process   │  │   (Shared   │  │ (Distributed│         │
+│  │   Memory)   │  │   Memory)   │  │   Network)  │         │
+│  │             │  │             │  │             │         │
+│  │ Size: 10MB  │  │ Size: 100MB │  │ Size: 10GB  │         │
+│  │ Time: 1ms   │  │ Time: 5ms   │  │ Time: 10ms  │         │
+│  │ Hit: 90%    │  │ Hit: 95%    │  │ Hit: 99%    │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│         │                │                │                │
+│         └────────────────┼────────────────┘                │
+│                          │                                 │
+└──────────────────────────┼─────────────────────────────────┘
+                           │
+                  ┌────────▼────────┐
+                  │    Database     │
+                  │   (Persistent   │
+                  │    Storage)     │
+                  │                 │
+                  │ Size: 1TB+      │
+                  │ Time: 100ms+    │
+                  │ Hit: 100%       │
+                  └─────────────────┘
+
+2. Web Application Cache Hierarchy
+Client Side              CDN/Edge           Application Tier        Database Tier
+┌─────────────┐         ┌─────────────┐     ┌─────────────┐        ┌─────────────┐
+│   Browser   │         │    CDN      │     │   App Cache │        │ Query Cache │
+│    Cache    │◄────────│   Cache     │◄────│  (Redis/    │◄───────│ (MySQL/     │
+│             │         │             │     │ Memcached)  │        │ PostgreSQL) │
+│ TTL: 24h    │         │ TTL: 4h     │     │ TTL: 1h     │        │ TTL: 15min  │
+│ Size: 50MB  │         │ Size: 100GB │     │ Size: 64GB  │        │ Size: 8GB   │
+│ Latency:0ms │         │ Latency:50ms│     │ Latency:2ms │        │ Latency:1ms │
+└─────────────┘         └─────────────┘     └─────────────┘        └─────────────┘
+                                                    │
+                                            ┌───────▼───────┐
+                                            │   Database    │
+                                            │  (Primary     │
+                                            │   Storage)    │
+                                            │               │
+                                            │ Latency: 50ms │
+                                            └───────────────┘
+
+3. Microservices Cache Hierarchy
+                    ┌─────────────────────────────────────────┐
+                    │              API Gateway                │
+                    │         ┌─────────────┐                 │
+                    │         │  Gateway    │                 │
+                    │         │   Cache     │                 │
+                    │         │ (1-5 min)   │                 │
+                    │         └─────────────┘                 │
+                    └──────────────┬──────────────────────────┘
+                                   │
+               ┌───────────────────┼───────────────────┐
+               │                   │                   │
+    ┌──────────▼─────────┐ ┌──────▼──────┐ ┌─────────▼────────┐
+    │   User Service     │ │Auth Service │ │ Product Service  │
+    │                    │ │             │ │                  │
+    │ ┌─────────────┐    │ │┌───────────┐│ │ ┌─────────────┐  │
+    │ │ Local Cache │    │ ││JWT Cache  ││ │ │Catalog Cache│  │
+    │ │ (In-Memory) │    │ ││(Redis)    ││ │ │ (Redis)     │  │
+    │ │  30 min     │    │ ││ 60 min    ││ │ │  2 hours    │  │
+    │ └─────────────┘    │ │└───────────┘│ │ └─────────────┘  │
+    └────────────────────┘ └─────────────┘ └──────────────────┘
+               │                   │                   │
+    ┌──────────▼─────────┐ ┌──────▼──────┐ ┌─────────▼────────┐
+    │    User DB         │ │  Auth DB    │ │   Product DB     │
+    │  (MySQL Master)    │ │ (Redis)     │ │ (PostgreSQL)     │
+    └────────────────────┘ └─────────────┘ └──────────────────┘
+
+4. CDN Cache Hierarchy (Geographic Distribution)
+                         ┌─────────────────┐
+                         │   Origin Server │
+                         │   (US-Central)  │
+                         │                 │
+                         │ ┌─────────────┐ │
+                         │ │Origin Cache │ │
+                         │ │ (1 hour)    │ │
+                         │ └─────────────┘ │
+                         └─────────┬───────┘
+                                   │
+             ┌─────────────────────┼─────────────────────┐
+             │                     │                     │
+    ┌────────▼────────┐   ┌────────▼────────┐   ┌───────▼────────┐
+    │  Regional Edge  │   │  Regional Edge  │   │ Regional Edge  │
+    │   (US-West)     │   │   (EU-West)     │   │  (AP-Southeast)│
+    │                 │   │                 │   │                │
+    │ ┌─────────────┐ │   │ ┌─────────────┐ │   │┌─────────────┐ │
+    │ │ Regional    │ │   │ │ Regional    │ │   ││ Regional    │ │
+    │ │ Cache       │ │   │ │ Cache       │ │   ││ Cache       │ │
+    │ │ (6 hours)   │ │   │ │ (6 hours)   │ │   ││ (6 hours)   │ │
+    │ └─────────────┘ │   │ └─────────────┘ │   │└─────────────┘ │
+    └─────────┬───────┘   └─────────┬───────┘   └────────┬───────┘
+              │                     │                    │
+    ┌─────────▼───────┐   ┌─────────▼───────┐   ┌────────▼──────┐
+    │   Edge Servers  │   │   Edge Servers  │   │ Edge Servers  │
+    │                 │   │                 │   │               │
+    │ ┌──┐ ┌──┐ ┌──┐  │   │ ┌──┐ ┌──┐ ┌──┐  │   │ ┌──┐ ┌──┐     │
+    │ │LA│ │SF│ │SEA│ │   │ │IE│ │UK│ │DE│ │   │ │SG│ │JP│     │
+    │ └──┘ └──┘ └──┘  │   │ └──┘ └──┘ └──┘  │   │ └──┘ └──┘     │
+    │ (24h) (24h)(24h)│   │(24h)(24h)(24h) │   │(24h)(24h)     │
+    └─────────────────┘   └─────────────────┘   └───────────────┘
+
+5. Cache Aside Pattern Flow
+Application                Cache                   Database
+     │                      │                        │
+     │──── GET key ────────▶│                        │
+     │                      │                        │
+     │◄──── MISS ──────────│                        │
+     │                      │                        │
+     │──────────────── GET key ──────────────────────▶│
+     │                      │                        │
+     │◄─────────────── value ─────────────────────────│
+     │                      │                        │
+     │──── SET key,value ──▶│                        │
+     │                      │                        │
+     │◄──── OK ────────────│                        │
+     │                      │                        │
+     │──── GET key ────────▶│                        │
+     │                      │                        │
+     │◄──── HIT: value ────│                        │
+
+6. Write-Through Pattern Flow  
+Application                Cache                   Database
+     │                      │                        │
+     │─── SET key,value ────▶│                        │
+     │                      │                        │
+     │                      │─── SET key,value ─────▶│
+     │                      │                        │
+     │                      │◄─── OK ───────────────│
+     │                      │                        │
+     │◄──── OK ────────────│                        │
+     │                      │                        │
+     │──── GET key ────────▶│                        │
+     │                      │                        │
+     │◄──── HIT: value ────│                        │
+
+7. Cache Invalidation Strategies
+Strategy                 Pattern                    Use Case
+┌─────────────────┐     ┌─────────────────┐       ┌─────────────────┐
+│  Time-based     │     │Cache Entry      │       │ Static Content  │
+│  (TTL/Expiry)   │────▶│┌─────────────┐  │──────▶│ User Sessions   │
+│                 │     ││expire: 3600s│  │       │ Temp Data       │
+│ Pro: Simple     │     │└─────────────┘  │       │                 │
+│ Con: Stale data │     └─────────────────┘       └─────────────────┘
+└─────────────────┘
+
+┌─────────────────┐     ┌─────────────────┐       ┌─────────────────┐
+│  Write-through  │     │    Database     │       │ Critical Data   │
+│  Invalidation   │────▶│       │         │──────▶│ Financial Info  │
+│                 │     │   ┌───▼───┐     │       │ User Profiles   │
+│ Pro: Consistency│     │   │Trigger│     │       │                 │
+│ Con: Complexity │     │   └───┬───┘     │       │                 │
+└─────────────────┘     │       │         │       └─────────────────┘
+                        │   ┌───▼───┐     │
+                        │   │Cache  │     │
+                        │   │Purge  │     │
+                        │   └───────┘     │
+                        └─────────────────┘
+
+┌─────────────────┐     ┌─────────────────┐       ┌─────────────────┐
+│   Tag-based     │     │ Cache Entry     │       │ Category Pages  │
+│  Invalidation   │────▶│ tags: [user123, │──────▶│ Search Results  │
+│                 │     │        premium, │       │ Related Content │
+│ Pro: Bulk clear │     │        active]  │       │                 │
+│ Con: Over-purge │     └─────────────────┘       └─────────────────┘
+└─────────────────┘
+
+8. Cache Warming Strategies
+Cold Start Problem         Cache Warming Solution
+┌─────────────────┐       ┌─────────────────┐
+│     Cache       │       │   Warm Cache    │
+│   ┌─────────┐   │       │  ┌─────────────┐│
+│   │  EMPTY  │   │       │  │ Popular     ││
+│   │         │   │  ───▶ │  │ Content     ││
+│   │ 0% Hit  │   │       │  │ Preloaded   ││
+│   │  Rate   │   │       │  │ 80% Hit     ││
+│   └─────────┘   │       │  │ Rate        ││
+└─────────────────┘       │  └─────────────┘│
+                          └─────────────────┘
+
+Warming Strategies:
+1. Proactive Warming
+   ┌─────────────────┐
+   │ Background Job  │
+   │      │          │
+   │ ┌────▼────┐     │
+   │ │Popular  │     │
+   │ │Content  │     │
+   │ │Analyzer │     │
+   │ └────┬────┘     │
+   │      │          │
+   │ ┌────▼────┐     │
+   │ │Cache    │     │
+   │ │Preload  │     │
+   │ └─────────┘     │
+   └─────────────────┘
+
+2. Lazy Warming
+   ┌─────────────────┐
+   │    Request      │
+   │       │         │
+   │ ┌─────▼─────┐   │
+   │ │Cache Miss │   │
+   │ └─────┬─────┘   │
+   │       │         │
+   │ ┌─────▼─────┐   │
+   │ │DB Query + │   │
+   │ │Cache Set  │   │
+   │ └───────────┘   │
+   └─────────────────┘
+
+3. Predictive Warming
+   ┌─────────────────┐
+   │ ML Prediction   │
+   │       │         │
+   │ ┌─────▼─────┐   │
+   │ │Future     │   │
+   │ │Popular    │   │
+   │ │Content    │   │
+   │ └─────┬─────┘   │
+   │       │         │
+   │ ┌─────▼─────┐   │
+   │ │Preemptive │   │
+   │ │Cache Load │   │
+   │ └───────────┘   │
+   └─────────────────┘
+
+9. Cache Consistency Models
+Strong Consistency          Eventual Consistency         Weak Consistency
+┌─────────────────┐        ┌─────────────────┐          ┌─────────────────┐
+│  All nodes see  │        │ Nodes converge  │          │ No guarantees   │
+│ same data at    │        │ over time       │          │ about data      │
+│ same time       │        │                 │          │ consistency     │
+│                 │        │ ┌─────────────┐ │          │                 │
+│ ┌─────────────┐ │        │ │    Node A   │ │          │ ┌─────────────┐ │
+│ │    Node A   │ │        │ │   Value: X  │ │          │ │    Node A   │ │
+│ │   Value: X  │ │        │ └─────────────┘ │          │ │   Value: X  │ │
+│ └─────────────┘ │        │        │        │          │ └─────────────┘ │
+│        │        │        │   Sync │        │          │                 │
+│     Sync        │        │        ▼        │          │ ┌─────────────┐ │
+│        │        │        │ ┌─────────────┐ │          │ │    Node B   │ │
+│        ▼        │        │ │    Node B   │ │          │ │   Value: Y  │ │
+│ ┌─────────────┐ │        │ │   Value: Y  │ │          │ └─────────────┘ │
+│ │    Node B   │ │        │ │     → X     │ │          │                 │
+│ │   Value: X  │ │        │ └─────────────┘ │          │ ┌─────────────┐ │
+│ └─────────────┘ │        └─────────────────┘          │ │    Node C   │ │
+│                 │                                     │ │   Value: Z  │ │
+│ Pro: Guaranteed │        Pro: Performance             │ └─────────────┘ │
+│ Con: Slow writes│        Con: Temporary inconsist.    │                 │
+└─────────────────┘        Use: Social media feeds     │ Pro: Fast       │
+Use: Banking, Finance                                   │ Con: Inconsist. │
+                                                        └─────────────────┘
+                                                        Use: Analytics
+
+10. Cache Performance Metrics Dashboard
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          Cache Performance                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Overall Hit Rate: 94.3% ████████████████████████▓░░░ (Target: >90%)     │
+│                                                                         │
+│ Cache Tier Performance:                                                 │
+│ ┌─ Browser Cache ────┐ ┌─ CDN Cache ───────┐ ┌─ App Cache ────┐       │
+│ │ Hit Rate: 89.2%    │ │ Hit Rate: 76.5%   │ │ Hit Rate: 82.1%│       │
+│ │ Avg Latency: 0ms   │ │ Avg Latency: 45ms │ │ Avg Latency: 2ms│      │
+│ │ Size: 45MB/50MB    │ │ Size: 89GB/100GB  │ │ Size: 52GB/64GB│       │
+│ └────────────────────┘ └───────────────────┘ └────────────────┘       │
+│                                                                         │
+│ Request Flow (per second):                                              │
+│ ┌──────┐  1000 req/s  ┌──────┐  240 req/s  ┌──────┐  58 req/s  ┌──────┐│
+│ │Client│ ────────────▶│ CDN  │ ───────────▶│ App  │ ──────────▶│  DB  ││
+│ └──────┘              └──────┘             └──────┘            └──────┘│
+│   ▲                     ▲                   ▲                    ▲     │
+│   │ 760 hits/s          │ 182 hits/s        │ 48 hits/s          │     │
+│                                                                         │
+│ Database Impact Reduction: 94.2% ████████████████████████▓░░░           │
+│ Total Bandwidth Saved: 2.3 TB/day                                      │
+└─────────────────────────────────────────────────────────────────────────┘

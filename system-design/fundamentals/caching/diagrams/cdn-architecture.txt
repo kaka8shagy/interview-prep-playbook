@@ -1,0 +1,436 @@
+CDN (Content Delivery Network) Architecture Patterns
+
+1. Global CDN Architecture Overview
+                          ┌─────────────────┐
+                          │   Origin Server │
+                          │  (Primary DC)   │
+                          │                 │
+                          │ ┌─────────────┐ │
+                          │ │ Web Servers │ │
+                          │ │ App Servers │ │
+                          │ │  Database   │ │
+                          │ └─────────────┘ │
+                          └─────────┬───────┘
+                                    │
+         ┌─────────────────────────┼─────────────────────────┐
+         │                         │                         │
+┌────────▼────────┐       ┌────────▼────────┐       ┌───────▼────────┐
+│  Regional PoP   │       │  Regional PoP   │       │ Regional PoP   │
+│   (Americas)    │       │    (Europe)     │       │   (Asia-Pac)   │
+│                 │       │                 │       │                │
+│ ┌─────────────┐ │       │ ┌─────────────┐ │       │┌─────────────┐ │
+│ │   Cache     │ │       │ │   Cache     │ │       ││   Cache     │ │
+│ │  Storage    │ │       │ │  Storage    │ │       ││  Storage    │ │
+│ │  10TB+      │ │       │ │  10TB+      │ │       ││  10TB+      │ │
+│ └─────────────┘ │       │ └─────────────┘ │       │└─────────────┘ │
+└─────────┬───────┘       └─────────┬───────┘       └────────┬───────┘
+          │                         │                        │
+    ┌─────┼─────┐             ┌─────┼─────┐            ┌─────┼─────┐
+    │     │     │             │     │     │            │     │     │
+┌───▼──┐ ┌▼───┐ ┌▼───┐    ┌──▼──┐ ┌▼───┐ ┌▼───┐   ┌──▼──┐ ┌▼───┐ ┌▼───┐
+│ NYC  │ │LAX │ │MIA │    │ LHR │ │FRA │ │AMS │   │ NRT │ │SIN │ │SYD │
+│Edge  │ │Edge│ │Edge│    │Edge │ │Edge│ │Edge│   │Edge │ │Edge│ │Edge│
+└──────┘ └────┘ └────┘    └─────┘ └────┘ └────┘   └─────┘ └────┘ └────┘
+
+2. CDN Request Flow with Cache Hierarchy
+Client Request Journey:
+
+Step 1: DNS Resolution
+┌─────────────┐    DNS Query    ┌─────────────┐
+│   Client    │ ──────────────▶ │ DNS Server  │
+│ (Browser)   │                 │ (CDN DNS)   │
+└─────────────┘                 └─────────────┘
+                                        │
+                            ┌───────────▼───────────┐
+                            │ Geographic Routing    │
+                            │ - Client IP: 8.8.8.8 │
+                            │ - Nearest Edge: NYC   │
+                            │ - Health Check: OK    │
+                            └───────────────────────┘
+
+Step 2: Edge Server Request
+┌─────────────┐   HTTP Request   ┌─────────────┐
+│   Client    │ ────────────────▶│ NYC Edge    │
+│             │                  │ Server      │
+└─────────────┘                  └─────┬───────┘
+                                       │
+                              ┌────────▼────────┐
+                              │ Cache Lookup:   │
+                              │ GET /image.jpg  │
+                              │                 │
+                              │ Status: MISS    │
+                              └─────────────────┘
+
+Step 3: Origin Fetch (Cache Miss)
+┌─────────────┐   Fetch Request  ┌─────────────┐
+│ NYC Edge    │ ────────────────▶│ Origin      │
+│ Server      │                  │ Server      │
+└─────────────┘                  └─────┬───────┘
+       ▲                               │
+       │          Response             │
+       └───────────────────────────────┘
+
+Step 4: Cache and Serve
+┌─────────────┐                  ┌─────────────┐
+│   Client    │ ◄──────────────── │ NYC Edge    │
+│             │   Cached Content │ Server      │
+└─────────────┘                  └─────────────┘
+                                 ┌─────────────┐
+                                 │ Cache Entry │
+                                 │ TTL: 1 hour │
+                                 │ Size: 2MB   │
+                                 └─────────────┘
+
+3. Multi-Tier CDN Cache Architecture
+                    Origin Servers
+                  ┌─────────────────┐
+                  │   Primary DC    │
+                  │ ┌─────────────┐ │
+                  │ │Origin Cache │ │ ◄─── Tier 0 (Origin)
+                  │ │ TTL: 30min  │ │      - Immediate DB cache
+                  │ └─────────────┘ │      - High consistency
+                  └─────────┬───────┘
+                            │
+                   ┌────────▼────────┐
+                   │ Regional Caches │ ◄─── Tier 1 (Regional)
+                   │                 │      - Continental distribution  
+                   │ ┌─────────────┐ │      - TTL: 2-6 hours
+                   │ │TTL: 4 hours │ │      - Bandwidth optimization
+                   │ └─────────────┘ │
+                   └─────────┬───────┘
+                             │
+              ┌─────────────┼─────────────┐
+              │             │             │
+    ┌─────────▼────────┐   ┌▼────────┐   ┌▼──────────┐
+    │   Edge Caches    │   │ Edge    │   │ Edge      │ ◄─ Tier 2 (Edge)
+    │                  │   │ Caches  │   │ Caches    │    - City-level PoPs
+    │ ┌─────────────┐  │   │         │   │           │    - TTL: 12-24 hours
+    │ │TTL: 24 hours│  │   │         │   │           │    - User proximity
+    │ └─────────────┘  │   │         │   │           │
+    └──────────────────┘   └─────────┘   └───────────┘
+
+4. CDN Load Balancing and Failover
+Normal Operation:
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Client    │     │   Primary   │     │   Origin    │
+│             │────▶│  Edge PoP   │────▶│   Server    │
+│ London, UK  │     │  (London)   │     │ (US-East)   │
+└─────────────┘     └─────────────┘     └─────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │ Health: OK  │
+                    │ Load: 45%   │
+                    │ Latency:5ms │
+                    └─────────────┘
+
+Failover Scenario:
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Client    │  X  │   Primary   │     │ Backup Edge │
+│             │────▶│  Edge PoP   │────▶│    (Paris)  │
+│ London, UK  │     │  (FAILED)   │     │             │
+└─────────────┘     └─────────────┘     └─────┬───────┘
+       │                                      │
+       │            DNS Failover              │
+       └──────────────────────────────────────┘
+
+Geographic Load Distribution:
+Traffic: 100,000 requests/minute
+┌─────────────────────────────────────────────────────────┐
+│                 Load Distribution                       │
+├─────────────────────────────────────────────────────────┤
+│ London Edge    ████████████████ 40% (40,000 req/min)   │
+│ Frankfurt Edge ██████████ 25% (25,000 req/min)         │
+│ Paris Edge     ██████ 15% (15,000 req/min)             │
+│ Amsterdam Edge ████ 10% (10,000 req/min)               │
+│ Madrid Edge    ██ 5% (5,000 req/min)                   │
+│ Stockholm Edge ██ 5% (5,000 req/min)                   │
+└─────────────────────────────────────────────────────────┘
+
+5. CDN Caching Policies by Content Type
+Static Assets (Images, CSS, JS):
+┌─────────────────────────────────────────────────────────┐
+│ Content Type: Static Assets                             │
+│ ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐   │
+│ │   Browser   │  │     CDN     │  │     Origin      │   │
+│ │  Cache-Control: │  Cache-Control:│  Cache-Control: │   │
+│ │ max-age=86400 │  max-age=2592000│ max-age=31536000│   │
+│ │  (24 hours) │  │ (30 days)   │  │  (1 year)     │   │
+│ └─────────────┘  └─────────────┘  └─────────────────┘   │
+│ ETag: "abc123"   ETag: "abc123"   ETag: "abc123"        │
+└─────────────────────────────────────────────────────────┘
+
+Dynamic Content (API Responses):
+┌─────────────────────────────────────────────────────────┐
+│ Content Type: API Responses                             │
+│ ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐   │
+│ │   Browser   │  │     CDN     │  │     Origin      │   │
+│ │ Cache-Control: │  Cache-Control:│  Cache-Control: │   │
+│ │ max-age=300   │  max-age=600  │  private,       │   │
+│ │  (5 minutes)│  │ (10 minutes)│  │ no-cache       │   │
+│ └─────────────┘  └─────────────┘  └─────────────────┘   │
+│ Vary: User-Agent Vary: Accept-Enc  Vary: Authorization  │
+└─────────────────────────────────────────────────────────┘
+
+Personalized Content (User-specific):
+┌─────────────────────────────────────────────────────────┐
+│ Content Type: Personalized                              │
+│ ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐   │
+│ │   Browser   │  │     CDN     │  │     Origin      │   │
+│ │ Cache-Control: │  Cache-Control:│  Cache-Control: │   │
+│ │ no-cache      │  no-store     │  private,       │   │
+│ │             │  │ (bypass CDN)│  │ max-age=0     │   │
+│ └─────────────┘  └─────────────┘  └─────────────────┘   │
+│ Authentication Headers Always Forwarded                 │
+└─────────────────────────────────────────────────────────┘
+
+6. CDN Performance Optimization Techniques
+HTTP/2 and HTTP/3 Support:
+┌─────────────────────────────────────────────────────────┐
+│                HTTP/2 Multiplexing                     │
+│ ┌─────────────┐                 ┌─────────────┐         │
+│ │   Client    │ ═══════════════ │ CDN Edge    │         │
+│ │             │ Single TCP Conn │             │         │
+│ └─────────────┘                 └─────────────┘         │
+│                                                         │
+│ Multiple Parallel Requests:                             │
+│ ───── GET /style.css                                    │
+│ ───── GET /script.js                                    │
+│ ───── GET /image1.jpg                                   │
+│ ───── GET /image2.jpg                                   │
+│ ───── GET /font.woff2                                   │
+└─────────────────────────────────────────────────────────┘
+
+Compression and Optimization:
+┌─────────────────────────────────────────────────────────┐
+│               Content Optimization                      │
+│                                                         │
+│ Original Asset          Optimized Asset                │
+│ ┌─────────────┐        ┌─────────────┐                  │
+│ │ style.css   │   ────▶ │ style.css   │                  │
+│ │ Size: 250KB │        │ Size: 75KB  │ (Gzip + Minify) │
+│ └─────────────┘        └─────────────┘                  │
+│                                                         │
+│ ┌─────────────┐        ┌─────────────┐                  │
+│ │ image.png   │   ────▶ │ image.webp  │                  │
+│ │ Size: 2MB   │        │ Size: 800KB │ (WebP + Resize) │
+│ └─────────────┘        └─────────────┘                  │
+│                                                         │
+│ ┌─────────────┐        ┌─────────────┐                  │
+│ │ video.mp4   │   ────▶ │ video.m3u8  │                  │
+│ │ Size: 100MB │        │ Adaptive    │ (HLS Streaming) │
+│ └─────────────┘        │ Bitrates    │                  │
+│                        └─────────────┘                  │
+└─────────────────────────────────────────────────────────┘
+
+7. CDN Cache Invalidation and Purging
+Individual File Purge:
+┌─────────────┐    Purge Request   ┌─────────────┐
+│  Admin      │ ─────────────────▶ │ CDN Control │
+│  Panel      │                    │ API         │
+└─────────────┘                    └─────┬───────┘
+                                         │
+                        ┌────────────────▼────────────────┐
+                        │         Purge Command           │
+                        │ purge /path/to/old-content.jpg  │
+                        └────────────────┬────────────────┘
+                                         │
+             ┌───────────────────────────┼───────────────────────────┐
+             │                           │                           │
+    ┌────────▼────────┐         ┌────────▼────────┐         ┌───────▼────────┐
+    │   US-East Edge  │         │   EU-West Edge  │         │ Asia-Pac Edge  │
+    │                 │         │                 │         │                │
+    │ ┌─────────────┐ │         │ ┌─────────────┐ │         │┌─────────────┐ │
+    │ │ PURGED:     │ │         │ │ PURGED:     │ │         ││ PURGED:     │ │
+    │ │old-content  │ │         │ │old-content  │ │         ││old-content  │ │
+    │ │.jpg         │ │         │ │.jpg         │ │         ││.jpg         │ │
+    │ └─────────────┘ │         │ └─────────────┘ │         │└─────────────┘ │
+    └─────────────────┘         └─────────────────┘         └────────────────┘
+
+Wildcard/Tag-based Purge:
+┌─────────────────────────────────────────────────────────┐
+│                Tag-based Purging                        │
+│                                                         │
+│ Cache Entry Structure:                                  │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ URL: /api/user/123                                  │ │
+│ │ Tags: [user:123, api:user, premium:users]          │ │
+│ │ Content: {"name": "Alice", "plan": "premium"}      │ │
+│ │ TTL: 1800 seconds                                  │ │
+│ └─────────────────────────────────────────────────────┘ │
+│                                                         │
+│ Purge Command: "purge tag:user:123"                     │
+│ Result: All content tagged with "user:123" purged      │
+│                                                         │
+│ Affected URLs:                                          │
+│ - /api/user/123                                         │
+│ - /api/user/123/profile                                 │
+│ - /api/user/123/preferences                             │
+│ - /cache/user/123/dashboard                             │
+└─────────────────────────────────────────────────────────┘
+
+8. CDN Analytics and Monitoring
+Real-time Performance Dashboard:
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          CDN Performance Dashboard                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Global Metrics (Last 5 minutes):                                       │
+│ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐             │
+│ │ Total Requests  │ │ Cache Hit Rate  │ │ Avg Latency     │             │
+│ │ 2,847,392       │ │ 89.3%          │ │ 23ms           │             │
+│ │ (+12% vs prev)  │ │ (Target: >85%) │ │ (Target: <50ms)│             │
+│ └─────────────────┘ └─────────────────┘ └─────────────────┘             │
+│                                                                         │
+│ Regional Performance:                                                   │
+│ ┌─────────────────────────────────────────────────────────────────────┐ │
+│ │ Region    │ Requests/min │ Hit Rate │ Avg Latency │ Error Rate    │ │
+│ │ US-East   │ 845,234     │ 91.2%   │ 18ms       │ 0.02%        │ │
+│ │ US-West   │ 623,145     │ 87.8%   │ 22ms       │ 0.01%        │ │
+│ │ EU-West   │ 756,892     │ 90.5%   │ 15ms       │ 0.03%        │ │
+│ │ Asia-Pac  │ 422,567     │ 86.1%   │ 35ms       │ 0.02%        │ │
+│ └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│ Top Content Types:                                                      │
+│ ┌─────────────────────────────────────────────────────────────────────┐ │
+│ │ Images (JPG/PNG)    ████████████████████████████ 68.4%             │ │
+│ │ Static Assets       ████████████ 18.2%                             │ │
+│ │ API Responses       ██████ 8.9%                                    │ │
+│ │ Video Streams       ███ 4.1%                                       │ │
+│ │ Other              █ 0.4%                                          │ │
+│ └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                         │
+│ Bandwidth Utilization:                                                 │
+│ ┌─────────────────────────────────────────────────────────────────────┐ │
+│ │ Current: 847 Gbps                                                   │ │
+│ │ Peak: 1.2 Tbps (at 14:30 UTC)                                     │ │
+│ │ Savings vs Origin: 2.3 TB/hour                                     │ │
+│ │ Cost Savings: $1,420/hour                                          │ │
+│ └─────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+9. Advanced CDN Features
+Edge Computing / Edge Functions:
+┌─────────────────────────────────────────────────────────┐
+│                   Edge Computing                        │
+│                                                         │
+│ ┌─────────────┐   Request    ┌─────────────┐             │
+│ │   Client    │ ──────────▶ │ Edge Server │             │
+│ │             │             │             │             │
+│ └─────────────┘             └─────┬───────┘             │
+│                                   │                     │
+│                            ┌──────▼──────┐              │
+│                            │ Edge        │              │
+│                            │ Functions   │              │
+│                            │             │              │
+│                            │ - A/B Test  │              │
+│                            │ - Auth      │              │
+│                            │ - Redirect  │              │
+│                            │ - Transform │              │
+│                            └─────────────┘              │
+│                                                         │
+│ Examples:                                               │
+│ • User Authentication at Edge                           │
+│ • Image Resizing/Optimization                           │
+│ • Request Routing Logic                                 │
+│ • Rate Limiting                                         │
+│ • Content Personalization                               │
+└─────────────────────────────────────────────────────────┘
+
+Image and Video Optimization:
+┌─────────────────────────────────────────────────────────┐
+│              Intelligent Image Delivery                │
+│                                                         │
+│ Original Request: /image.jpg                            │
+│              │                                          │
+│    ┌─────────▼─────────┐                                │
+│    │  Device Detection │                                │
+│    │ - Screen Size     │                                │
+│    │ - Connection      │                                │
+│    │ - Browser Support │                                │
+│    └─────────┬─────────┘                                │
+│              │                                          │
+│  ┌───────────▼───────────┐                              │
+│  │ Optimized Delivery    │                              │
+│  │                       │                              │
+│  │ Desktop + WiFi:       │                              │
+│  │ └─ image.webp (2MB)   │                              │
+│  │                       │                              │
+│  │ Mobile + 4G:          │                              │
+│  │ └─ image_mobile.webp  │                              │
+│  │   (500KB)             │                              │
+│  │                       │                              │
+│  │ Mobile + 3G:          │                              │
+│  │ └─ image_small.jpg    │                              │
+│  │   (150KB)             │                              │
+│  └───────────────────────┘                              │
+└─────────────────────────────────────────────────────────┘
+
+10. CDN Security Features
+DDoS Protection:
+┌─────────────────────────────────────────────────────────┐
+│                  DDoS Mitigation                        │
+│                                                         │
+│ Attack Traffic: 50 Gbps                                 │
+│ ┌─────────────┐                                         │
+│ │  Malicious  │ ████████████████                       │
+│ │   Traffic   │ ████████████████ ──┐                   │
+│ │             │ ████████████████   │                   │
+│ └─────────────┘                    │                   │
+│                                    │                   │
+│ ┌─────────────┐                    │                   │
+│ │ Legitimate  │ ████               │                   │
+│ │  Traffic    │ ████ ──────────────┼─────────┐         │
+│ │             │                    │         │         │
+│ └─────────────┘                    │         │         │
+│                                    │         │         │
+│                          ┌─────────▼───────┐ │         │
+│                          │  CDN Scrubbing  │ │         │
+│                          │  Centers        │ │         │
+│                          │                 │ │         │
+│                          │ Filter/Block    │ │         │
+│                          │ Attack Traffic  │ │         │
+│                          └─────────────────┘ │         │
+│                                              │         │
+│ Clean Traffic: 2 Gbps                        │         │
+│                      ┌───────────────────────▼───────┐ │
+│                      │        Origin Server          │ │
+│                      │     (Protected from DDoS)     │ │
+│                      └───────────────────────────────┘ │
+│                                                        │
+│                                         ┌──────────────▼┐
+│                                         │  Legitimate   │
+│                                         │  Users Served │
+│                                         │  Normally     │
+│                                         └───────────────┘
+└─────────────────────────────────────────────────────────┘
+
+Web Application Firewall (WAF):
+┌─────────────────────────────────────────────────────────┐
+│                    WAF Protection                       │
+│                                                         │
+│ ┌─────────────┐   HTTP Request   ┌─────────────┐        │
+│ │   Client    │ ────────────────▶│ CDN + WAF   │        │
+│ └─────────────┘                  └─────┬───────┘        │
+│                                        │                │
+│                              ┌─────────▼─────────┐      │
+│                              │   Security Rules  │      │
+│                              │                   │      │
+│                              │ ✓ SQL Injection   │      │
+│                              │ ✓ XSS Attacks     │      │
+│                              │ ✓ CSRF Tokens     │      │
+│                              │ ✓ Rate Limiting   │      │
+│                              │ ✓ Geo-blocking    │      │
+│                              └─────────┬─────────┘      │
+│                                        │                │
+│               ┌────────────────────────┼───────────┐    │
+│               │                        │           │    │
+│     ┌─────────▼─────────┐    ┌─────────▼────────┐  │    │
+│     │   Block/Alert     │    │   Allow Through  │  │    │
+│     │  Malicious        │    │  Legitimate      │  │    │
+│     │  Requests         │    │  Requests        │  │    │
+│     └───────────────────┘    └─────────┬────────┘  │    │
+│                                        │           │    │
+│                              ┌─────────▼─────────┐ │    │
+│                              │  Origin Server    │ │    │
+│                              │  (Protected)      │ │    │
+│                              └───────────────────┘ │    │
+└─────────────────────────────────────────────────────────┘

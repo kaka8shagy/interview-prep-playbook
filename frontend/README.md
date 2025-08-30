@@ -115,7 +115,7 @@ Each topic includes:
 
 ## Quick Links
 
-- [All Code Snippets](./javascript-core/code-snippets/)
-- [React Patterns Library](./react/code-snippets/)
-- [Performance Benchmarks](./performance/code-snippets/)
-- [State Management Examples](./state-management/code-snippets/)
+- [JavaScript Core Examples](./javascript-core/)
+- [React Code Examples](./react/)
+- [Performance Code Examples](./performance/)
+- [State Management Code Examples](./state-management/)

@@ -1,0 +1,193 @@
+Disaster Recovery Architecture Patterns
+
+1. RTO/RPO Quadrants
+┌─────────────────┬─────────────────┐
+│  High RTO       │   Low RTO       │
+│  High RPO       │   High RPO      │
+│                 │                 │
+│ • Cold Backup   │ • Warm Standby  │
+│ • Manual Setup  │ • Load Balancer │
+│ • Cost: $       │ • Cost: $$      │
+├─────────────────┼─────────────────┤
+│  High RTO       │   Low RTO       │
+│  Low RPO        │   Low RPO       │
+│                 │                 │
+│ • Sync Backup   │ • Hot Standby   │
+│ • Point-in-time │ • Active-Active │
+│ • Cost: $$      │ • Cost: $$$     │
+└─────────────────┴─────────────────┘
+
+2. Multi-Region Disaster Recovery
+Primary Region (US-East)          Disaster Recovery Region (US-West)
+┌─────────────────┐              ┌─────────────────┐
+│   Load Balancer │◄─────────────┤   Load Balancer │
+│       (ALB)     │    Failover  │      (ALB)      │
+├─────────────────┤              ├─────────────────┤
+│                 │              │                 │
+│ ┌─────────────┐ │              │ ┌─────────────┐ │
+│ │ Web Servers │ │              │ │ Web Servers │ │
+│ │   (Active)  │ │              │ │  (Standby)  │ │
+│ └─────────────┘ │              │ └─────────────┘ │
+│                 │              │                 │
+│ ┌─────────────┐ │   Real-time  │ ┌─────────────┐ │
+│ │  Database   │ │═══Sync═══════│ │  Database   │ │
+│ │  (Primary)  │ │              │ │  (Replica)  │ │
+│ └─────────────┘ │              │ └─────────────┘ │
+│                 │              │                 │
+│ ┌─────────────┐ │   Async      │ ┌─────────────┐ │
+│ │   Storage   │ │──Backup──────│ │   Storage   │ │
+│ │   (S3-1)    │ │              │ │   (S3-2)    │ │
+│ └─────────────┘ │              │ └─────────────┘ │
+└─────────────────┘              └─────────────────┘
+
+3. Backup Strategies Pyramid
+                    ┌─────────────────┐
+                    │   Live/Hot      │ ◄── RTO: Minutes
+                    │   (Streaming)   │     RPO: Seconds
+                    └─────────────────┘
+                   ┌─────────────────────┐
+                   │      Warm           │ ◄── RTO: Hours
+                   │   (Daily Sync)      │     RPO: Hours
+                   └─────────────────────┘
+                  ┌─────────────────────────┐
+                  │        Cold             │ ◄── RTO: Days
+                  │   (Weekly Archive)      │     RPO: Days
+                  └─────────────────────────┘
+
+4. Database Disaster Recovery Patterns
+
+A) Master-Slave with Failover
+Master DB (Primary)              Slave DB (DR Site)
+┌─────────────────┐             ┌─────────────────┐
+│     [ACTIVE]    │             │    [STANDBY]    │
+│                 │   Async     │                 │
+│ ┌─────────────┐ │  Replica    │ ┌─────────────┐ │
+│ │  Write/Read │ │═════════════│ │  Read Only  │ │
+│ │   Logs      │ │             │ │   Replica   │ │
+│ └─────────────┘ │             │ └─────────────┘ │
+└─────────────────┘             └─────────────────┘
+        │                               ▲
+        │ Failure Detection             │ Promote to
+        ▼                               │ Master
+┌─────────────────┐             ┌─────────────────┐
+│   Health Check  │────────────▶│   Failover      │
+│   Monitoring    │  Alert      │   Orchestrator  │
+└─────────────────┘             └─────────────────┘
+
+B) Active-Active Multi-Master
+Site A (US-East)                Site B (US-West)
+┌─────────────────┐             ┌─────────────────┐
+│     [ACTIVE]    │             │     [ACTIVE]    │
+│                 │ Bidirectional│                 │
+│ ┌─────────────┐ │  Sync       │ ┌─────────────┐ │
+│ │  Read/Write │ │◄═══════════►│ │  Read/Write │ │
+│ │  Conflict   │ │             │ │  Resolution │ │
+│ │  Resolution │ │             │ │  (CRDT/LWW) │ │
+│ └─────────────┘ │             │ └─────────────┘ │
+└─────────────────┘             └─────────────────┘
+
+5. Application-Level Disaster Recovery
+┌─────────────────────────────────────────────────────────────┐
+│                    Global Load Balancer                     │
+│                     (DNS-based routing)                     │
+└─────────────────┬───────────────────────┬───────────────────┘
+                  │                       │
+         ┌─────────▼────────┐    ┌─────────▼────────┐
+         │   Region A       │    │   Region B       │
+         │   (Primary)      │    │  (Secondary)     │
+         │                  │    │                  │
+         │ ┌──────────────┐ │    │ ┌──────────────┐ │
+         │ │   API        │ │    │ │   API        │ │
+         │ │   Gateway    │ │    │ │   Gateway    │ │
+         │ └──────────────┘ │    │ └──────────────┘ │
+         │                  │    │                  │
+         │ ┌──────────────┐ │    │ ┌──────────────┐ │
+         │ │ Microservice │ │    │ │ Microservice │ │
+         │ │   Cluster    │ │    │ │   Cluster    │ │
+         │ └──────────────┘ │    │ └──────────────┘ │
+         │                  │    │                  │
+         │ ┌──────────────┐ │    │ ┌──────────────┐ │
+         │ │   Message    │ │    │ │   Message    │ │
+         │ │    Queue     │ │    │ │    Queue     │ │
+         │ └──────────────┘ │    │ └──────────────┘ │
+         └──────────────────┘    └──────────────────┘
+
+6. Recovery Time Comparison
+Strategy          RTO        RPO        Cost    Complexity
+────────────────────────────────────────────────────────
+Cold Backup       Days       Days       $       Low
+Warm Standby      Hours      Hours      $$      Medium  
+Hot Standby       Minutes    Minutes    $$$     High
+Active-Active     Seconds    Seconds    $$$$    Very High
+
+7. Disaster Recovery Testing Patterns
+                    ┌─────────────────┐
+                    │  Disaster Drill │
+                    │    Schedule     │
+                    └─────────┬───────┘
+                              │
+                    ┌─────────▼───────┐
+                    │  Automated      │
+                    │  Failover Test  │
+                    └─────────┬───────┘
+                              │
+                    ┌─────────▼───────┐
+                    │  Data Integrity │
+                    │     Check       │
+                    └─────────┬───────┘
+                              │
+                    ┌─────────▼───────┐
+                    │   Recovery      │
+                    │  Verification   │
+                    └─────────┬───────┘
+                              │
+                    ┌─────────▼───────┐
+                    │  Performance    │
+                    │   Validation    │
+                    └─────────────────┘
+
+8. Cross-Region Data Sync Patterns
+┌──────────────────────────────────────────────────────────────┐
+│                    Data Synchronization                      │
+└────┬─────────────┬─────────────┬─────────────┬─────────────┬─┘
+     │             │             │             │             │
+┌────▼──┐    ┌────▼──┐    ┌────▼──┐    ┌────▼──┐    ┌────▼──┐
+│Region │    │Region │    │Region │    │Region │    │Region │
+│ US-E  │    │ US-W  │    │ EU-W  │    │ AP-SE │    │ CA-C  │
+└────┬──┘    └────┬──┘    └────┬──┘    └────┬──┘    └────┬──┘
+     │             │             │             │             │
+     └─────────────┼─────────────┼─────────────┼─────────────┘
+                   │             │             │
+            ┌──────▼─────┐ ┌─────▼─────┐ ┌────▼─────┐
+            │  Conflict  │ │ Vector    │ │ Eventual │
+            │ Resolution │ │ Clocks    │ │ Consist. │
+            └────────────┘ └───────────┘ └──────────┘
+
+9. Business Continuity Decision Tree
+        Is this a critical system?
+                   │
+            ┌──────┴──────┐
+           YES            NO
+            │              │
+       RTO < 1hr?     Standard Backup
+            │              │
+      ┌─────┴─────┐   (Daily/Weekly)
+     YES         NO
+      │           │
+  Hot Standby   Warm Standby
+      │           │
+  $$$$        $$
+
+10. Recovery Validation Checklist
+┌─────────────────────────────────────────┐
+│ ✓ Data Consistency Verification        │
+│ ✓ Application Functionality Testing    │
+│ ✓ Performance Baseline Validation      │
+│ ✓ Security Controls Re-establishment   │
+│ ✓ Network Connectivity Confirmation    │
+│ ✓ Monitoring and Alerting Setup       │
+│ ✓ User Access and Authentication       │
+│ ✓ Third-party Integration Testing      │
+│ ✓ Compliance and Audit Trail          │
+│ ✓ Communication Plan Execution        │
+└─────────────────────────────────────────┘

@@ -1,0 +1,708 @@
+Load Balancer Types, Algorithms, and Architecture Diagrams
+
+================================================================================
+LAYER 4 vs LAYER 7 LOAD BALANCING
+================================================================================
+
+LAYER 4 LOAD BALANCING (Transport Layer)
+┌─────────────────────┐
+│      Client         │
+│   192.168.1.100     │
+└─────────┬───────────┘
+          │ TCP Connection
+          │ (No content inspection)
+          ▼
+┌─────────────────────┐
+│   L4 Load Balancer  │
+│                     │
+│ Routes based on:    │
+│ • Source IP         │
+│ • Destination IP    │
+│ • Source Port       │
+│ • Destination Port  │
+│                     │
+│ ┌─ Routing Table ─┐ │
+│ │ Hash(Client IP) │ │
+│ │ mod Server_Count│ │
+│ └─────────────────┘ │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┐
+    ▼           ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│
+│:80     │ │:80     │ │:80     │
+└────────┘ └────────┘ └────────┘
+
+Characteristics:
+- Fast (no content parsing)
+- Protocol agnostic
+- Single TCP connection per client-server pair
+- Cannot make routing decisions based on application data
+
+LAYER 7 LOAD BALANCING (Application Layer)
+┌─────────────────────┐
+│      Client         │
+│                     │
+│  HTTP Request:      │
+│  GET /api/users     │
+│  Host: api.com      │
+│  Cookie: session=xyz│
+└─────────┬───────────┘
+          │ HTTP Request
+          │ (Full content inspection)
+          ▼
+┌─────────────────────┐
+│   L7 Load Balancer  │
+│   (Reverse Proxy)   │
+│                     │
+│ Routes based on:    │
+│ • URL Path          │
+│ • HTTP Headers      │
+│ • Cookie Values     │
+│ • Request Method    │
+│ • Content Type      │
+│                     │
+│ ┌─ Routing Rules ─┐ │
+│ │ /api/users  →S1 │ │
+│ │ /api/orders →S2 │ │
+│ │ /static/*   →S3 │ │
+│ └─────────────────┘ │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┐
+    ▼           ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│API     │ │Order   │ │Static  │
+│Server  │ │Server  │ │Server  │
+└────────┘ └────────┘ └────────┘
+
+Characteristics:
+- More CPU intensive (content parsing)
+- Application-aware routing
+- Can modify requests/responses
+- SSL termination capability
+- Advanced features (caching, compression)
+
+================================================================================
+LOAD BALANCING ALGORITHMS DETAILED
+================================================================================
+
+ROUND ROBIN ALGORITHM
+Sequence: R1, R2, R3, R4, R5, R6, R7, R8, R9
+
+┌─────────────────────┐
+│   Request Queue     │
+│                     │
+│ R1→R2→R3→R4→R5→R6   │
+│                     │
+└─────────┬───────────┘
+          │
+┌─────────▼───────────┐
+│   Load Balancer     │
+│                     │
+│  Current Index: 0   │
+│  Index = (Index+1)  │
+│         % 3         │
+└─────────┬───────────┘
+          │
+    ┌─────┼─────┬─────┐
+    ▼     ▼     ▼     
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 0│ │Server 1│ │Server 2│
+│   R1   │ │   R2   │ │   R3   │
+│   R4   │ │   R5   │ │   R6   │
+│   R7   │ │   R8   │ │   R9   │
+└────────┘ └────────┘ └────────┘
+
+Pros: ✅ Simple, Even distribution, No server state needed
+Cons: ❌ Doesn't consider server capacity or current load
+
+WEIGHTED ROUND ROBIN
+Server Weights: S1=5, S2=3, S3=2 (Total=10)
+
+┌─────────────────────┐
+│  Weight Calculation │
+│                     │
+│  S1: 5/10 = 50%     │
+│  S2: 3/10 = 30%     │
+│  S3: 2/10 = 20%     │
+└─────────┬───────────┘
+          │
+          ▼
+Request Distribution (10 requests):
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│
+│Weight 5│ │Weight 3│ │Weight 2│
+│        │ │        │ │        │
+│   R1   │ │   R6   │ │   R9   │
+│   R2   │ │   R7   │ │   R10  │
+│   R3   │ │   R8   │ │        │
+│   R4   │ │        │ │        │
+│   R5   │ │        │ │        │
+└────────┘ └────────┘ └────────┘
+
+Algorithm:
+1. Generate random number [0, total_weight)
+2. Iterate through servers, subtracting weights
+3. Select server when weight goes <= 0
+
+LEAST CONNECTIONS ALGORITHM
+Current State: S1(3 conns), S2(7 conns), S3(1 conn), S4(5 conns)
+
+┌─────────────────────┐     New Request Arrives
+│   Load Balancer     │◄─────────────────────────
+│                     │
+│  Algorithm:         │
+│  1. Query all       │
+│     server          │
+│     connections     │
+│  2. Select server   │
+│     with minimum    │
+│     connections     │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┬─────┐
+    ▼           ▼     ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│ │Server 4│
+│3 conns │ │7 conns │ │1 conn  │◄─ │5 conns │
+│        │ │        │ │(MIN)   │  │        │
+│Active: │ │Active: │ │Active: │  │Active: │
+│- Conn1 │ │- Conn1 │ │- Conn1 │  │- Conn1 │
+│- Conn2 │ │- Conn2 │ │        │  │- Conn2 │
+│- Conn3 │ │- Conn3 │ │        │  │- Conn3 │
+│        │ │- Conn4 │ │        │  │- Conn4 │
+│        │ │- Conn5 │ │        │  │- Conn5 │
+│        │ │- Conn6 │ │        │  │        │
+│        │ │- Conn7 │ │        │  │        │
+└────────┘ └────────┘ └────────┘ └────────┘
+
+Pros: ✅ Considers current load, Good for long-lived connections
+Cons: ❌ Overhead of tracking connections, Complex state management
+
+WEIGHTED LEAST CONNECTIONS
+Server Config: S1(weight=2, 4 conns), S2(weight=1, 3 conns), S3(weight=3, 6 conns)
+
+Calculation: Connection Ratio = Active Connections / Weight
+┌─────────────────────┐
+│  Ratio Calculation  │
+│                     │
+│  S1: 4/2 = 2.0      │
+│  S2: 3/1 = 3.0      │
+│  S3: 6/3 = 2.0      │
+│                     │
+│  Minimum: S1 & S3   │
+│  Choose S1 (first)  │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┐
+    ▼           ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│
+│Weight:2│ │Weight:1│ │Weight:3│
+│Conns:4 │ │Conns:3 │ │Conns:6 │
+│Ratio:2.0│◄─ │Ratio:3.0│ │Ratio:2.0│
+│(CHOSEN)│  │        │ │        │
+└────────┘ └────────┘ └────────┘
+
+This balances both server capacity and current load
+
+IP HASH ALGORITHM
+┌─────────────────────┐
+│   Client Requests   │
+│                     │
+│ Client A: 192.168.1.10
+│ Client B: 192.168.1.20
+│ Client C: 192.168.1.30
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│   Load Balancer     │
+│                     │
+│  Hash Function:     │
+│  MD5(client_ip)     │
+│  mod server_count   │
+│                     │
+│  Examples:          │
+│  hash(192.168.1.10) │
+│   % 3 = 1 → S2      │
+│  hash(192.168.1.20) │
+│   % 3 = 2 → S3      │
+│  hash(192.168.1.30) │
+│   % 3 = 0 → S1      │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┐
+    ▼           ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│
+│        │ │        │ │        │
+│Client C│ │Client A│ │Client B│
+│(always)│ │(always)│ │(always)│
+└────────┘ └────────┘ └────────┘
+
+Pros: ✅ Session affinity, Predictable routing
+Cons: ❌ Uneven distribution, Hot spots possible
+
+================================================================================
+HEALTH CHECKING PATTERNS
+================================================================================
+
+ACTIVE HEALTH CHECKS
+┌─────────────────────┐
+│   Load Balancer     │
+│                     │
+│  Health Checker     │
+│  Interval: 30s      │
+│  Timeout: 5s        │
+│  Path: /health      │
+│  Success: 200 OK    │
+└─────────┬───────────┘
+          │
+    Every 30 seconds
+          │
+    ┌─────┴─────┬─────┬─────┐
+    ▼           ▼     ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│ │Server 4│
+│ ✅ 200 │ │ ❌ 500 │ │ ✅ 200 │ │ ❌ TimeOut
+│Healthy │ │Unhealthy│ │Healthy │ │Unhealthy│
+└────────┘ └────────┘ └────────┘ └────────┘
+
+Health Check Response Examples:
+✅ Healthy Response:
+HTTP/1.1 200 OK
+{
+  "status": "healthy",
+  "database": "connected",
+  "cache": "responsive",
+  "uptime": 86400
+}
+
+❌ Unhealthy Response:
+HTTP/1.1 503 Service Unavailable
+{
+  "status": "unhealthy",
+  "database": "disconnected",
+  "cache": "timeout",
+  "errors": ["DB connection pool exhausted"]
+}
+
+PASSIVE HEALTH CHECKS
+┌─────────────────────┐
+│   Load Balancer     │
+│                     │
+│  Error Tracking:    │
+│  • 5xx responses    │
+│  • Timeouts         │
+│  • Connection fails │
+│                     │
+│  Threshold:         │
+│  5 errors in 60s    │
+│  = Mark unhealthy   │
+└─────────┬───────────┘
+          │
+    Normal Traffic
+          │
+    ┌─────┴─────┬─────┬─────┐
+    ▼           ▼     ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│ │Server 4│
+│2 errors│ │8 errors│ │0 errors│ │3 errors│
+│✅ OK   │ │❌ Remove│ │✅ OK   │ │✅ OK   │
+└────────┘ └────────┘ └────────┘ └────────┘
+
+Error Tracking Window:
+Time:  0s    30s   60s   90s   120s
+S1:    ✅    ✅    ✅    ✅    ✅  
+S2:    ❌    ❌    ❌    ❌    ❌  (5+ errors → removed)
+S3:    ✅    ✅    ✅    ✅    ✅  
+S4:    ❌    ✅    ❌    ✅    ✅  (< 5 errors → kept)
+
+HYBRID HEALTH CHECKING
+┌─────────────────────┐
+│   Load Balancer     │
+│                     │
+│ Active Checks:      │
+│ • /health every 30s │
+│ • Deep health info  │
+│                     │
+│ Passive Checks:     │
+│ • Real traffic      │
+│ • Fast detection    │
+│                     │
+│ Decision Matrix:    │
+│ Active✅ Passive✅→✅│
+│ Active✅ Passive❌→⚠│
+│ Active❌ Passive✅→⚠│
+│ Active❌ Passive❌→❌│
+└─────────────────────┘
+
+================================================================================
+SESSION AFFINITY AND STICKY SESSIONS
+================================================================================
+
+SESSION AFFINITY WITH COOKIES
+First Request (No Session):
+┌─────────────────────┐
+│      Client         │
+│                     │
+│  GET /login         │
+│  (No cookies)       │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│   Load Balancer     │
+│                     │
+│ 1. No session found │
+│ 2. Use round-robin  │
+│ 3. Select Server 2  │
+│ 4. Create mapping   │
+└─────────┬───────────┘
+          │
+    ┌─────┼─────┬─────┐
+    ▼     ▼     ▼     
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│◄─ │Server 3│
+│        │ │SELECTED│  │        │
+└────────┘ └────────┘ └────────┘
+
+Response with Session:
+┌─────────────────────┐
+│      Client         │◄────────────────────┐
+│                     │                     │
+│ Set-Cookie:         │                     │
+│ LBSESSION=srv2_abc  │                     │
+└─────────────────────┘                     │
+                                           │
+Response from Server 2:                    │
+HTTP/1.1 200 OK                           │
+Set-Cookie: LBSESSION=srv2_abc; Path=/     │
+Set-Cookie: JSESSIONID=user123_session     │
+
+Subsequent Request (With Session):
+┌─────────────────────┐
+│      Client         │
+│                     │
+│  GET /dashboard     │
+│  Cookie:            │
+│  LBSESSION=srv2_abc │
+│  JSESSIONID=user123 │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│   Load Balancer     │
+│                     │
+│ 1. Parse cookie     │
+│ 2. Extract srv2_abc │
+│ 3. Route to Server 2│
+│ 4. Maintain session │
+└─────────┬───────────┘
+          │
+          │ (Sticky routing)
+          ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│◄─ │Server 3│
+│        │ │TARGETED│  │        │
+└────────┘ └────────┘ └────────┘
+
+SESSION AFFINITY WITH IP PERSISTENCE
+Client Session Mapping Table:
+┌─────────────────────┐
+│   Load Balancer     │
+│   Session Store     │
+│                     │
+│ ┌─────────────────┐ │
+│ │Client IP → Srvr │ │
+│ │192.168.1.10→S1  │ │
+│ │192.168.1.20→S2  │ │
+│ │192.168.1.30→S1  │ │
+│ │192.168.1.40→S3  │ │
+│ │10.0.0.15   →S2  │ │
+│ └─────────────────┘ │
+│                     │
+│ TTL: 30 minutes     │
+│ (session timeout)   │
+└─────────────────────┘
+
+Request Flow:
+Client 192.168.1.20 → Check mapping → Route to Server 2
+
+CONSISTENT HASHING FOR SESSIONS
+Hash Ring with Server Nodes:
+                        Server A
+                         ↓
+                    0x40000000
+                        │
+           Server D     │      Server B
+              ↓         │         ↓
+        0xC0000000 ─────┼───── 0x80000000
+                        │
+                        │
+                    0x00000000
+                        ↓
+                      Server C
+
+Session Mapping:
+- Session "user_123" → hash(user_123) = 0x20000000 → Server C
+- Session "user_456" → hash(user_456) = 0x60000000 → Server B
+
+When Server B fails:
+- Session "user_456" → Next clockwise → Server A
+- Only sessions mapped to failed server need remapping
+- Other sessions remain on their original servers
+
+================================================================================
+HIGH AVAILABILITY LOAD BALANCER PATTERNS
+================================================================================
+
+ACTIVE-PASSIVE LOAD BALANCER HA
+┌─────────────────────┐
+│      Clients        │
+└─────────┬───────────┘
+          │
+    Virtual IP (VIP)
+    192.168.1.100
+          │
+          ▼
+┌─────────────────────┐     ┌─────────────────────┐
+│   Load Balancer 1   │     │   Load Balancer 2   │
+│     (ACTIVE)        │────▶│    (STANDBY)        │
+│                     │     │                     │
+│ • Owns VIP          │     │ • Monitors LB1      │
+│ • Processes traffic │     │ • Ready to takeover │
+│ • Sends heartbeats  │     │ • Syncs config      │
+└─────────┬───────────┘     └─────────────────────┘
+          │
+    ┌─────┴─────┬─────┐
+    ▼           ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│
+└────────┘ └────────┘ └────────┘
+
+Failover Process:
+1. LB1 stops sending heartbeats
+2. LB2 detects failure (3 missed heartbeats)
+3. LB2 assumes VIP (GARP broadcast)
+4. Traffic redirects to LB2
+5. Recovery time: 5-15 seconds
+
+ACTIVE-ACTIVE LOAD BALANCER HA
+┌─────────────────────┐
+│      Clients        │
+└─────────┬───────────┘
+          │
+    DNS Round Robin or
+    Multiple VIPs
+          │
+    ┌─────┴─────┐
+    ▼           ▼
+┌───────────────┐   ┌───────────────┐
+│Load Balancer1 │   │Load Balancer2 │
+│   (ACTIVE)    │   │   (ACTIVE)    │
+│               │   │               │
+│ VIP1:         │   │ VIP2:         │
+│ 192.168.1.100 │   │ 192.168.1.101 │
+│               │   │               │
+│ Handles 50%   │   │ Handles 50%   │
+│ of traffic    │   │ of traffic    │
+└───────┬───────┘   └───────┬───────┘
+        │                   │
+        │  ┌─────────────────┘
+        │  │
+    ┌───▼──▼───┬─────┐
+    ▼          ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│
+└────────┘ └────────┘ └────────┘
+
+DNS Configuration:
+app.example.com  A  192.168.1.100
+app.example.com  A  192.168.1.101
+
+Benefits:
+- Full utilization of both load balancers
+- No wasted standby resources
+- Automatic load distribution
+
+================================================================================
+GLOBAL LOAD BALANCING
+================================================================================
+
+GEOGRAPHIC LOAD BALANCING
+Global DNS with GeoDNS:
+
+Query from Europe:
+┌─────────────────────┐
+│   European User     │
+│   (London)          │
+└─────────┬───────────┘
+          │
+          │ DNS Query: app.com
+          ▼
+┌─────────────────────┐
+│   GeoDNS Server     │
+│                     │
+│ User Location: EU   │
+│ Return: EU servers  │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│   EU Load Balancer  │
+│   (Frankfurt)       │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┐
+    ▼           ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│EU Srv1 │ │EU Srv2 │ │EU Srv3 │
+└────────┘ └────────┘ └────────┘
+
+Query from US:
+┌─────────────────────┐
+│     US User         │
+│   (New York)        │
+└─────────┬───────────┘
+          │
+          │ DNS Query: app.com
+          ▼
+┌─────────────────────┐
+│   GeoDNS Server     │
+│                     │
+│ User Location: US   │
+│ Return: US servers  │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│   US Load Balancer  │
+│   (Virginia)        │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┐
+    ▼           ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│US Srv1 │ │US Srv2 │ │US Srv3 │
+└────────┘ └────────┘ └────────┘
+
+ANYCAST LOAD BALANCING
+Same IP announced from multiple locations:
+
+    Global Internet
+         │
+         │ Route to nearest
+         │ 203.0.113.100
+         │
+    ┌────┴────┬────────┬────────┐
+    ▼         ▼        ▼        ▼
+┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+│US West  │ │US East  │ │Europe   │ │Asia     │
+│LB       │ │LB       │ │LB       │ │LB       │
+│203.0.   │ │203.0.   │ │203.0.   │ │203.0.   │
+│113.100  │ │113.100  │ │113.100  │ │113.100  │
+└─────────┘ └─────────┘ └─────────┘ └─────────┘
+
+BGP Routing automatically routes users to nearest location
+- San Francisco user → US West
+- New York user → US East  
+- London user → Europe
+- Tokyo user → Asia
+
+================================================================================
+LOAD BALANCER PERFORMANCE TUNING
+================================================================================
+
+CONNECTION POOLING AND MULTIPLEXING
+
+Without Connection Pooling:
+┌─────────────────────┐     ┌─────────────────────┐
+│   Load Balancer     │     │      Server         │
+│                     │     │                     │
+│ Request 1 ─────────────────→ New TCP Connection│
+│ Request 2 ─────────────────→ New TCP Connection│
+│ Request 3 ─────────────────→ New TCP Connection│
+│                     │     │                     │
+│ High CPU overhead   │     │ High CPU overhead   │
+│ TCP handshake cost  │     │ TCP handshake cost  │
+└─────────────────────┘     └─────────────────────┘
+
+Connection overhead per request:
+- TCP handshake: 1.5 RTT
+- SSL handshake: 2 RTT (if HTTPS)
+- Connection teardown: 1 RTT
+
+With Connection Pooling:
+┌─────────────────────┐     ┌─────────────────────┐
+│   Load Balancer     │     │      Server         │
+│                     │═════│                     │ Connection 1
+│ Request 1 ──────────╫─────│                     │
+│ Request 2 ──────────╫─────│                     │
+│ Request 3 ──────────╫─────│                     │
+│                     │═════│                     │ Connection 2
+│ Request 4 ──────────╫─────│                     │
+│ Request 5 ──────────╫─────│                     │
+│                     │═════│                     │ Connection 3
+│                     │     │                     │
+│ Pool Size: 10       │     │ Reuses connections  │
+│ Reuse Connections   │     │ Lower CPU usage     │
+└─────────────────────┘     └─────────────────────┘
+
+HTTP/2 Multiplexing:
+┌─────────────────────┐     ┌─────────────────────┐
+│   Load Balancer     │     │      Server         │
+│                     │═════│                     │ Single HTTP/2 Connection
+│ Stream 1: Req 1 ────╫─────│ Stream 1: Resp 1   │
+│ Stream 2: Req 2 ────╫─────│ Stream 2: Resp 2   │
+│ Stream 3: Req 3 ────╫─────│ Stream 3: Resp 3   │
+│                     │═════│                     │
+│ Multiple streams    │     │ Parallel processing │
+│ over single conn    │     │ Header compression  │
+└─────────────────────┘     └─────────────────────┘
+
+BUFFER AND TIMEOUT OPTIMIZATION
+
+Buffer Size Impact:
+┌─────────────────────┐
+│  Buffer Sizes       │
+│                     │
+│ Small Buffers (4KB):│
+│ • Lower memory      │
+│ • More system calls │
+│ • Higher CPU usage  │
+│                     │
+│ Large Buffers (64KB)│
+│ • Higher memory     │
+│ • Fewer system calls│
+│ • Lower CPU usage   │
+│                     │
+│ Optimal: 16-32KB    │
+│ Balance memory/CPU  │
+└─────────────────────┘
+
+Timeout Configuration:
+┌─────────────────────┐
+│   Timeout Settings  │
+│                     │
+│ Connect: 5s         │
+│ • Time to establish │
+│   TCP connection    │
+│                     │
+│ Read: 30s          │
+│ • Time to read      │
+│   response headers  │
+│                     │
+│ Send: 10s          │
+│ • Time to send      │
+│   request body      │
+│                     │
+│ Keep-Alive: 60s    │
+│ • Connection reuse  │
+│   timeout           │
+└─────────────────────┘
+
+================================================================================

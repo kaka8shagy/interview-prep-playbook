@@ -1,0 +1,515 @@
+Scalability Architecture Patterns and Load Distribution Diagrams
+
+================================================================================
+HORIZONTAL VS VERTICAL SCALING PATTERNS
+================================================================================
+
+VERTICAL SCALING (Scale Up)
+┌─────────────────────┐    ┌─────────────────────┐
+│     Single Server   │    │   Upgraded Server   │
+│                     │    │                     │
+│   CPU: 4 cores      │────▶│   CPU: 16 cores     │
+│   RAM: 16 GB        │    │   RAM: 128 GB       │
+│   Disk: 1 TB SSD    │    │   Disk: 4 TB NVMe   │
+│                     │    │                     │
+│   Max QPS: 1,000    │    │   Max QPS: 8,000    │
+└─────────────────────┘    └─────────────────────┘
+
+Pros: ✅ Simple, Strong consistency, No network overhead
+Cons: ❌ Hardware limits, Single point of failure, Expensive
+
+HORIZONTAL SCALING (Scale Out)
+┌─────────────────────┐    ┌─────────────────────┐
+│     Load Balancer   │    │     Load Balancer   │
+│                     │    │                     │
+│     Routes to 1     │────▶│   Routes to Many    │
+│      Server         │    │     Servers         │
+└─────────┬───────────┘    └─────────┬───────────┘
+          │                          │
+          ▼                          ▼
+┌─────────────────────┐    ┌─────────────────────┐
+│      Server 1       │    │      Server 1       │
+│   QPS: 1,000        │    │   QPS: 1,000        │
+└─────────────────────┘    ├─────────────────────┤
+                           │      Server 2       │
+                           │   QPS: 1,000        │
+                           ├─────────────────────┤
+                           │      Server 3       │
+                           │   QPS: 1,000        │
+                           ├─────────────────────┤
+                           │       ...           │
+                           └─────────────────────┘
+                           
+Pros: ✅ Unlimited scaling, Fault tolerance, Cost-effective
+Cons: ❌ Complex coordination, Data consistency challenges
+
+================================================================================
+LOAD BALANCER ALGORITHMS AND PATTERNS
+================================================================================
+
+ROUND ROBIN ALGORITHM
+Requests: R1, R2, R3, R4, R5, R6, R7, R8
+
+┌─────────────────────┐
+│   Load Balancer     │
+│   (Round Robin)     │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┬─────┐
+    ▼           ▼     ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│ │Server 4│
+│   R1   │ │   R2   │ │   R3   │ │   R4   │
+│   R5   │ │   R6   │ │   R7   │ │   R8   │
+└────────┘ └────────┘ └────────┘ └────────┘
+
+Distribution: Even (25% each server)
+
+WEIGHTED ROUND ROBIN
+Server weights: S1(3), S2(2), S3(1)
+
+┌─────────────────────┐
+│   Load Balancer     │
+│  (Weighted RR)      │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┬─────┐
+    ▼           ▼     ▼     
+┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│
+│Weight:3│ │Weight:2│ │Weight:1│
+│ 50% of │ │ 33% of │ │ 17% of │
+│requests│ │requests│ │requests│
+└────────┘ └────────┘ └────────┘
+
+LEAST CONNECTIONS ALGORITHM
+Current connections: S1(5), S2(3), S3(8), S4(2)
+
+┌─────────────────────┐    New Request
+│   Load Balancer     │◄──────────────
+│ (Least Connections) │
+└─────────┬───────────┘
+          │
+    Route to Server 4 (lowest connections)
+          ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│Server 1│ │Server 2│ │Server 3│ │Server 4│
+│5 conns │ │3 conns │ │8 conns │ │2 conns │◄─
+└────────┘ └────────┘ └────────┘ └────────┘
+
+================================================================================
+AUTO-SCALING PATTERNS
+================================================================================
+
+REACTIVE SCALING (Threshold-based)
+
+                    Scale Up Threshold (75% CPU)
+                    ┌────────────────────────────────────
+                    │
+Current Load ────────┤
+                    │
+                    └────────────────────────────────────
+                    Scale Down Threshold (25% CPU)
+
+Time:    T1    T2    T3    T4    T5    T6    T7    T8
+Load:    40%   60%   80%   85%   70%   40%   20%   15%
+Action:  -     -     ↑     ↑     -     -     ↓     ↓
+Instances: 2    2     3     4     4     4     3     2
+
+PREDICTIVE SCALING (Forecast-based)
+
+Load Prediction Based on Historical Data:
+    100%┌─────────────────────────────────────────────────
+        │                   ╭─╮
+        │                 ╭─╯ ╰─╮  Predicted Peak
+     75%├─────────────────╯─────╰──────────────────
+        │               ╱         ╲
+        │             ╱             ╲
+     50%├───────────╱─────────────────╲─────────────
+        │         ╱                     ╲
+        │       ╱                         ╲
+     25%├─────╱─────────────────────────────╲─────
+        │   ╱                                 ╲
+        └─╱─────────────────────────────────────╲──
+         0h   6h   12h  18h   24h   6h   12h  18h
+              Yesterday      Today     Tomorrow
+              
+Proactive Scaling: Add instances before predicted peak
+
+SCHEDULED SCALING (Time-based)
+
+Weekly Traffic Pattern:
+High ┌─────────────────────────────────────────────────
+     │     ╭─╮         ╭─╮         ╭─╮         ╭─╮
+Med  ├───╱─╯ ╰─╮     ╱─╯ ╰─╮     ╱─╯ ╰─╮     ╱─╯ ╰─╮
+     │ ╱       ╰─╮ ╱─╯     ╰─╮ ╱─╯     ╰─╮ ╱─╯     ╰─
+Low  └╯──────────╰╱─────────╰╱─────────╰╱─────────╰╱
+     Mon  Tue  Wed  Thu  Fri  Sat  Sun  Mon  Tue
+
+Scheduled Actions:
+- 8 AM Mon-Fri: Scale to 10 instances
+- 6 PM Mon-Fri: Scale to 15 instances  
+- 10 PM Daily:  Scale to 5 instances
+- Weekends:     Maintain 8 instances
+
+================================================================================
+DATABASE SCALING PATTERNS
+================================================================================
+
+READ REPLICA SCALING
+
+┌─────────────────────┐
+│   Application       │
+│                     │
+│   Read Queries  ────┼─────┐
+│   Write Queries ────┼───┐ │
+└─────────────────────┘   │ │
+                          │ │
+    Write Path            │ │     Read Path
+          ▼               │ │         ▼
+┌─────────────────────┐   │ │   ┌─────────────────────┐
+│   Master Database   │   │ │   │   Load Balancer     │
+│                     │   │ │   │   (Read Traffic)    │
+│   - Handles Writes  │   │ │   └─────────┬───────────┘
+│   - Single Source   │   │ │             │
+│   - ACID Properties │   │ └─────────────┘
+└─────────┬───────────┘   │         ┌─────┴─────┬─────┐
+          │               │         ▼           ▼     ▼
+    Replication           │   ┌────────────┐ ┌────────────┐
+          │               │   │ Read       │ │ Read       │
+          ▼               │   │ Replica 1  │ │ Replica 2  │
+┌─────────────────────┐   │   │            │ │            │
+│   Replica Sync      │───┘   │ - Read Only│ │ - Read Only│
+│                     │       │ - Eventually│ │ - Eventually│
+│   - Async/Sync      │       │   Consistent│ │   Consistent│
+│   - Data Stream     │       └────────────┘ └────────────┘
+└─────────────────────┘
+
+Benefits: Read scaling, Fault tolerance
+Trade-offs: Replication lag, Complex consistency
+
+HORIZONTAL SHARDING (Partitioning)
+
+Data Distribution by User ID:
+
+┌─────────────────────┐
+│   Application       │
+│   Shard Router      │
+│                     │
+│   hash(user_id) %   │
+│   num_shards        │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┬─────┐
+    ▼           ▼     ▼     ▼
+┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
+│  Shard 1   │ │  Shard 2   │ │  Shard 3   │ │  Shard 4   │
+│            │ │            │ │            │ │            │
+│ Users      │ │ Users      │ │ Users      │ │ Users      │
+│ 1-250K     │ │ 250K-500K  │ │ 500K-750K  │ │ 750K-1M    │
+│            │ │            │ │            │ │            │
+│ Independent│ │ Independent│ │ Independent│ │ Independent│
+│ Database   │ │ Database   │ │ Database   │ │ Database   │
+└────────────┘ └────────────┘ └────────────┘ └────────────┘
+
+Benefits: Write scaling, Parallel processing
+Trade-offs: Cross-shard queries, Rebalancing complexity
+
+CONSISTENT HASHING FOR SHARDING
+
+Hash Ring (0 to 2^32):
+
+                        Shard A
+                         ↓
+                    0x40000000
+                        │
+           Shard D      │      Shard B
+              ↓         │         ↓
+        0xC0000000 ─────┼───── 0x80000000
+                        │
+                        │
+                    0x00000000
+                        ↓
+                      Shard C
+
+Key Mapping Examples:
+- hash("user_123") = 0x20000000 → Shard C
+- hash("user_456") = 0x60000000 → Shard B  
+- hash("user_789") = 0xA0000000 → Shard D
+
+Adding New Shard:
+Only keys between adjacent shards need to be moved
+Minimal data redistribution compared to traditional hashing
+
+================================================================================
+CACHING PATTERNS FOR SCALING
+================================================================================
+
+MULTI-LEVEL CACHE HIERARCHY
+
+┌─────────────────────┐
+│     Browser         │
+│   (Client Cache)    │
+│   TTL: 5 minutes    │
+└─────────┬───────────┘
+          │ Cache Miss
+          ▼
+┌─────────────────────┐
+│       CDN           │
+│   (Edge Cache)      │
+│   TTL: 1 hour       │
+└─────────┬───────────┘
+          │ Cache Miss
+          ▼
+┌─────────────────────┐
+│   Load Balancer     │
+│   (Reverse Proxy)   │
+│   TTL: 10 minutes   │
+└─────────┬───────────┘
+          │ Cache Miss
+          ▼
+┌─────────────────────┐
+│   Application       │
+│   (In-Memory)       │
+│   TTL: 1 minute     │
+└─────────┬───────────┘
+          │ Cache Miss
+          ▼
+┌─────────────────────┐
+│   Redis/Memcached   │
+│   (Distributed)     │
+│   TTL: 30 minutes   │
+└─────────┬───────────┘
+          │ Cache Miss
+          ▼
+┌─────────────────────┐
+│     Database        │
+│   (Source of Truth) │
+└─────────────────────┘
+
+Cache Hit Ratios:
+- Browser: 60%
+- CDN: 80%
+- Reverse Proxy: 70%  
+- Application: 85%
+- Distributed: 90%
+- Combined Hit Rate: ~99%
+
+CACHE-ASIDE PATTERN
+
+Read Path:
+┌─────────────────────┐
+│   Application       │
+│                     │
+│ 1. Check Cache  ────┼─────┐
+└─────────────────────┘     │
+                            ▼
+                    ┌─────────────────────┐
+                    │     Cache           │
+                    │   (Redis/Memcached) │
+                    └─────────┬───────────┘
+                              │
+                        Cache Hit? 
+                              ├─ Yes ─────┐
+                              │           ▼
+                              │     Return Data
+                              │
+                          No  ▼
+                    ┌─────────────────────┐
+                    │     Database        │
+                    │                     │
+                    │ 2. Query DB         │
+                    └─────────┬───────────┘
+                              │
+                              ▼
+┌─────────────────────┐   3. Store in Cache
+│   Application       │◄─────────────────────
+│                     │
+│ 4. Return to User   │
+└─────────────────────┘
+
+Write Path:
+┌─────────────────────┐
+│   Application       │
+│                     │
+│ 1. Write to DB  ────┼─────┐
+└─────────────────────┘     │
+                            ▼
+                    ┌─────────────────────┐
+                    │     Database        │
+                    └─────────┬───────────┘
+                              │
+                              ▼
+                    ┌─────────────────────┐
+                    │     Cache           │
+                    │                     │
+                    │ 2. Invalidate/      │
+                    │    Update Cache     │
+                    └─────────────────────┘
+
+================================================================================
+MICROSERVICES SCALING PATTERNS
+================================================================================
+
+SERVICE MESH ARCHITECTURE
+
+┌─────────────────────┐
+│    API Gateway      │
+│                     │
+│ - Authentication    │
+│ - Rate Limiting     │
+│ - Request Routing   │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│   Service Mesh      │
+│   (Istio/Consul)    │
+│                     │
+│ - Load Balancing    │
+│ - Circuit Breaking  │
+│ - Service Discovery │
+│ - Observability     │
+└─────────┬───────────┘
+          │
+    ┌─────┴─────┬─────┬─────┬─────┐
+    ▼           ▼     ▼     ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│User    │ │Order   │ │Payment │ │Inventory│
+│Service │ │Service │ │Service │ │Service │
+│        │ │        │ │        │ │        │
+│Auto-   │ │Auto-   │ │Auto-   │ │Auto-    │
+│scaling │ │scaling │ │scaling │ │scaling  │
+└────────┘ └────────┘ └────────┘ └────────┘
+
+Independent Scaling:
+- Each service scales based on its own metrics
+- Different resource requirements per service
+- Isolated failure domains
+
+CIRCUIT BREAKER PATTERN
+
+Normal Operation:
+┌─────────────────────┐    ┌─────────────────────┐
+│   Service A         │────▶│   Service B         │
+│                     │◄────│   (Healthy)         │
+│ Circuit: CLOSED     │     │                     │
+└─────────────────────┘     └─────────────────────┘
+
+High Failure Rate Detected:
+┌─────────────────────┐    ┌─────────────────────┐
+│   Service A         │  ╱ │   Service B         │
+│                     │ ╱  │   (Failing)         │
+│ Circuit: OPEN       │╱   │                     │
+│ Return Fallback     │    └─────────────────────┘
+└─────────────────────┘
+
+Recovery Testing:
+┌─────────────────────┐    ┌─────────────────────┐
+│   Service A         │────▶│   Service B         │
+│                     │◄────│   (Recovering)      │
+│ Circuit: HALF-OPEN  │     │                     │
+└─────────────────────┘     └─────────────────────┘
+
+================================================================================
+GLOBAL SCALING PATTERNS
+================================================================================
+
+MULTI-REGION DEPLOYMENT
+
+Region: US-East                    Region: EU-West
+┌─────────────────────┐           ┌─────────────────────┐
+│                     │           │                     │
+│  ┌───────────────┐  │           │  ┌───────────────┐  │
+│  │   CDN Edge    │  │           │  │   CDN Edge    │  │
+│  └───────┬───────┘  │           │  └───────┬───────┘  │
+│          │          │           │          │          │
+│  ┌───────▼───────┐  │           │  ┌───────▼───────┐  │
+│  │ Load Balancer │  │           │  │ Load Balancer │  │
+│  └───────┬───────┘  │           │  └───────┬───────┘  │
+│          │          │           │          │          │
+│  ┌───────▼───────┐  │           │  ┌───────▼───────┐  │
+│  │  App Servers  │  │           │  │  App Servers  │  │
+│  └───────┬───────┘  │           │  └───────┬───────┘  │
+│          │          │           │          │          │
+│  ┌───────▼───────┐  │  Replica  │  ┌───────▼───────┐  │
+│  │   Database    │──┼───────────┼──│   Database    │  │
+│  │   (Master)    │  │    tion   │  │   (Replica)   │  │
+│  └───────────────┘  │           │  └───────────────┘  │
+│                     │           │                     │
+└─────────────────────┘           └─────────────────────┘
+
+Traffic Routing:
+- US users → US-East region
+- EU users → EU-West region  
+- Automatic failover between regions
+- Data replication for consistency
+
+CONTENT DELIVERY NETWORK (CDN)
+
+Origin Server (Central):
+┌─────────────────────┐
+│   Origin Server     │
+│   (San Francisco)   │
+│                     │
+│ - Source of Truth   │
+│ - Dynamic Content   │
+└─────────┬───────────┘
+          │
+    Global Distribution
+          │
+    ┌─────┴─────┬─────┬─────┬─────┐
+    ▼           ▼     ▼     ▼     ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│London  │ │Tokyo   │ │Sydney  │ │NYC     │
+│Edge    │ │Edge    │ │Edge    │ │Edge    │
+│        │ │        │ │        │ │        │
+│Cache   │ │Cache   │ │Cache   │ │Cache   │
+│Static  │ │Static  │ │Static  │ │Static  │
+│Content │ │Content │ │Content │ │Content │
+└────────┘ └────────┘ └────────┘ └────────┘
+
+Benefits:
+- Reduced latency (serve from nearby edge)
+- Reduced origin server load
+- Better availability and reliability
+- Bandwidth cost optimization
+
+================================================================================
+PERFORMANCE SCALING METRICS
+================================================================================
+
+SYSTEM CAPACITY PLANNING
+
+Load Testing Results:
+    Response Time (ms)
+    5000┌─────────────────────────────────────────────────
+        │                                           ╱
+        │                                         ╱
+    4000├─────────────────────────────────────────╱───
+        │                                      ╱
+        │                                    ╱
+    3000├─────────────────────────────────╱─────────
+        │                             ╱
+        │                          ╱
+    2000├───────────────────────╱────────────────────
+        │                   ╱
+        │               ╱
+    1000├───────────╱──────────────────────────────
+        │       ╱
+        │   ╱
+       0└─╱─────────────────────────────────────────
+         0    1K   2K   3K   4K   5K   6K   7K   8K
+                        Requests per Second
+
+Key Metrics:
+- Optimal Operating Point: 3,000 QPS @ 500ms
+- Maximum Capacity: 5,000 QPS @ 2,000ms  
+- Breaking Point: 6,000+ QPS (response time exponential)
+
+Scaling Decision Points:
+- Scale Out at: 2,500 QPS (early warning)
+- Scale In at: 1,000 QPS (cost optimization)
+- Emergency Scale: 4,000 QPS (prevent outage)
+
+================================================================================

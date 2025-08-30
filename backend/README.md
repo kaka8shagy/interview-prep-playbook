@@ -141,7 +141,7 @@ Each topic includes:
 
 ## Quick Links
 
-- [Node.js Code Examples](./node-fundamentals/code-snippets/)
-- [API Design Patterns](./api-design/code-snippets/)
-- [Database Scripts](./databases/code-snippets/)
-- [Microservices Templates](./microservices/code-snippets/)
+- [Node.js Fundamentals](./node-fundamentals/)
+- [API Design Patterns](./api-design/)
+- [Database Topics](./databases/)
+- [Microservices Architecture](./microservices/)

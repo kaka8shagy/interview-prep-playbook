@@ -1,0 +1,34 @@
+Twitter System Architecture
+
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Clients   │────▶│Load Balancer │────▶│  API Gateway│
+└─────────────┘     └──────────────┘     └─────────────┘
+                                                 │
+                    ┌────────────────────────────┼────────────────────────────┐
+                    ▼                            ▼                            ▼
+            ┌──────────────┐            ┌──────────────┐            ┌──────────────┐
+            │ Tweet Service│            │ Timeline     │            │ User Service │
+            │              │            │ Service      │            │              │
+            └──────────────┘            └──────────────┘            └──────────────┘
+                    │                            │                            │
+                    ▼                            ▼                            ▼
+            ┌──────────────┐            ┌──────────────┐            ┌──────────────┐
+            │  Tweet DB    │            │Timeline Cache│            │   User DB    │
+            │  (Cassandra) │            │   (Redis)    │            │  (PostgreSQL)│
+            └──────────────┘            └──────────────┘            └──────────────┘
+                                                 │
+                                         ┌───────▼────────┐
+                                         │ Message Queue  │
+                                         │    (Kafka)     │
+                                         └────────────────┘
+
+Components:
+- Load Balancer: Distributes traffic across API Gateway instances
+- API Gateway: Request routing, authentication, rate limiting
+- Tweet Service: Handles tweet CRUD operations
+- Timeline Service: Manages home timeline generation and caching
+- User Service: User management, follows, profiles
+- Message Queue: Asynchronous processing for timeline fan-out
+- Redis Cache: Stores pre-computed timelines for fast access
+- Cassandra: Distributed storage for tweets (time-series optimized)
+- PostgreSQL: Relational storage for users and relationships

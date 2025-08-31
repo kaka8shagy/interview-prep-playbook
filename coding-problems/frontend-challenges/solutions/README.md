@@ -241,6 +241,102 @@ This directory contains comprehensive implementations of common frontend coding 
 - **Component lifecycle** and event handling
 - **Real-world examples**: Custom frameworks, rendering optimization, UI libraries
 
+### ✅ Medium Level Challenges
+
+#### 35. **DOM Element Matching** ([dom-element-matching.js](./dom-element-matching.js))
+- **Find corresponding elements** in different DOM tree structures
+- **Tree traversal** and element matching algorithms
+- **Real-world examples**: Component comparison, DOM diffing, testing utilities
+- **Asked at**: Swiggy
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 36. **Custom Array Sort** ([custom-array-sort.js](./custom-array-sort.js))  
+- **Custom quicksort** implementation with partitioning
+- **In-place sorting** algorithms and optimization
+- **Real-world examples**: Custom sorting logic, performance optimization
+- **Asked at**: Freshworks
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 37. **Advanced Object Flatten** ([advanced-object-flatten.js](./advanced-object-flatten.js))
+- **Deep nested objects** with arrays and primitive handling
+- **Path-based key generation** with custom separators
+- **Real-world examples**: Form data processing, API payload transformation
+- **Asked at**: Razorpay, PhonePe
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 38. **Array Push Events** ([array-push-events.js](./array-push-events.js))
+- **Event dispatch** when array elements are added
+- **Array method polyfills** with custom behavior
+- **Real-world examples**: Reactive programming, state change detection
+- **Asked at**: Flipkart, Myntra
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 39. **Clear All Timeouts** ([clear-all-timeouts.js](./clear-all-timeouts.js))
+- **Timeout tracking** and batch clearing utility  
+- **IIFE patterns** for global state management
+- **Real-world examples**: Cleanup utilities, resource management
+- **Asked at**: PayPal, Adobe
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 40. **Lodash GroupBy** ([lodash-groupby.js](./lodash-groupby.js))
+- **Collection grouping** by property or function
+- **Deep property path** access and nested grouping
+- **Real-world examples**: Data analysis, reporting, aggregation
+- **Asked at**: Atlassian, Shopify
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 41. **Advanced Debounce** ([advanced-debounce.js](./advanced-debounce.js))
+- **Leading and trailing** execution options
+- **Complex timing** control and cancellation
+- **Real-world examples**: Search inputs, API calls, user interaction handling
+- **Asked at**: Uber, Airbnb
+- **Status**: ✅ Problem statement created, implementation pending
+
+### ✅ Hard Level Challenges
+
+#### 42. **Async Progress Manager** ([async-progress-manager.js](./async-progress-manager.js))
+- **Multiple progress bars** with concurrency limits
+- **Resource management** and queue processing
+- **Real-world examples**: File uploads, batch processing, download managers
+- **Asked at**: Microsoft, Google
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 43. **Map with Concurrency Limit** ([map-with-limit.js](./map-with-limit.js))
+- **Controlled concurrent** async processing
+- **Resource throttling** and queue management
+- **Real-world examples**: API rate limiting, batch processing, resource optimization
+- **Asked at**: Netflix, Spotify
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 44. **Cancelable Promise Utility** ([cancelable-promise-utility.js](./cancelable-promise-utility.js))
+- **Promise cancellation** with custom error handling
+- **AbortController integration** and cleanup mechanisms
+- **Real-world examples**: HTTP requests, long-running tasks, user cancellation
+- **Asked at**: Meta, Amazon
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 45. **TypeAhead LRU Cache** ([typehead-lru-cache.js](./typehead-lru-cache.js))
+- **Least Recently Used** cache for search suggestions
+- **Cache eviction** policies and size management
+- **Real-world examples**: Search autocomplete, API caching, performance optimization  
+- **Asked at**: Dropbox, Stripe
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 46. **Deep JSON Diff** ([deep-json-diff.js](./deep-json-diff.js))
+- **Deep object comparison** with difference tracking
+- **From/to value** representation for all data types
+- **Real-world examples**: Version control, change tracking, data synchronization
+- **Asked at**: GitHub, Figma
+- **Status**: ✅ Problem statement created, implementation pending
+
+#### 47. **Task Dependency Executor** ([task-dependency-executor.js](./task-dependency-executor.js))
+- **Directed Acyclic Graph** dependency resolution
+- **Parallel execution** with concurrency limits
+- **Topological sorting** and resource management
+- **Real-world examples**: Build systems, workflow orchestration, pipeline processing
+- **Asked at**: Airbnb, Uber
+- **Status**: ✅ Problem statement created, implementation pending
+
 ## 🚧 Future Enhancements
 
 Potential areas for expansion:

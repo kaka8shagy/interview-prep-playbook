@@ -470,21 +470,21 @@ Based on the comprehensive JavaScript interview questions list, here are the rem
 - ❌ **Problem #64**: Aggregate array of objects on given key
 - ❌ **Problem #65**: Convert entity relation array to ancestry tree string
 
-### React Interview Questions (18 missing)
+### React Interview Questions (13 missing)
 
-#### React Hooks (14 missing)
-- ❌ **usePrevious() hook**: Track previous values across renders
-- ❌ **useIdle() hook**: Detect user idle state with timeout
-- ❌ **useAsync() hook**: Handle async operations with loading states
-- ❌ **useDebounce() hook**: Debounce values with configurable delay
-- ❌ **useThrottle() hook**: Throttle values with rate limiting
+#### React Hooks (9 missing)
+- ✅ **usePrevious() hook**: Track previous values across renders
+- ✅ **useIdle() hook**: Detect user idle state with timeout
+- ✅ **useAsync() hook**: Handle async operations with loading states
+- ✅ **useDebounce() hook**: Debounce values with configurable delay
+- ✅ **useThrottle() hook**: Throttle values with rate limiting
 - ❌ **useResponsive() hook**: Responsive breakpoint detection
 - ❌ **useWhyDidYouUpdate() hook**: Debug component re-renders
 - ❌ **useOnScreen() hook**: Intersection observer for visibility
 - ❌ **useScript() hook**: Dynamic script loading with status
-- ❌ **useOnClickOutside() hook**: Outside click detection
+- ✅ **useOnClickOutside() hook**: Outside click detection
 - ❌ **useHasFocus() hook**: Focus state tracking
-- ❌ **useToggle() hook**: Boolean state toggling utility
+- ✅ **useToggle() hook**: Boolean state toggling utility
 - ❌ **useCopy() hook**: Clipboard API integration
 - ❌ **useLockedBody() hook**: Body scroll locking for modals
 

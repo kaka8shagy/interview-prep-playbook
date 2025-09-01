@@ -1,341 +1,454 @@
 # Frontend Coding Challenges - Solutions
 
-This directory contains comprehensive implementations of common frontend coding challenges that frequently appear in technical interviews. Each solution includes multiple approaches, detailed comments explaining the reasoning, and real-world use cases.
+This directory contains comprehensive implementations of common frontend coding challenges that frequently appear in technical interviews. Each solution is organized by category with one focused implementation per file, following CLAUDE.md standards of 50-150 lines with extensive comments.
 
-## Implemented Solutions
+## 📁 Organized by Category
 
-### ✅ Core Utility Functions
+Each category contains focused, single-problem implementations that are perfect for interview preparation and learning specific concepts.
 
-#### 1. **Debounce** ([debounce.js](./debounce.js))
-- **Basic implementation** with timeout management
-- **Advanced version** with immediate execution option
-- **Full-featured** with cancel/flush capabilities
-- **Real-world examples**: Search suggestions, auto-save, resize handlers
+### 🎯 [Promises](./promises/) - Promise Patterns & Polyfills
 
-#### 2. **Throttle** ([throttle.js](./throttle.js)) 
-- **Basic throttle** with leading edge execution
-- **Trailing edge** support for final state capture
-- **RequestAnimationFrame** throttling for smooth animations
-- **Real-world examples**: Scroll handlers, API rate limiting, mouse tracking
+#### **Promise.all** ([promise-all.js](./promises/promise-all.js))
+- **"All or nothing"** concurrency pattern implementation
+- **Order preservation** and proper error handling
+- **Real-world examples**: Parallel API calls, batch operations
 
-### ✅ Advanced Function Programming
+#### **Promise.race** ([promise-race.js](./promises/promise-race.js))
+- **"First wins"** competition pattern
+- **Timeout implementations** and fallback strategies  
+- **Real-world examples**: Request racing, timeout handling
 
-#### 3. **Currying** ([currying.js](./currying.js))
-- **Basic currying** with arity detection
-- **Advanced currying** with configuration options
-- **Named arguments** support
-- **Infinite currying** for variable arguments
-- **Real-world examples**: Event handlers, API builders, validation chains
+#### **Promise.allSettled** ([promise-allsettled.js](./promises/promise-allsettled.js))
+- **"Wait for all regardless"** pattern with structured results
+- **Mixed success/failure** handling and reporting
+- **Real-world examples**: Batch processing, status reporting
 
-#### 4. **Currying with Placeholders** ([currying-placeholders.js](./currying-placeholders.js))
-- **Lodash-style** placeholder implementation
-- **Named placeholders** for complex scenarios
-- **Flexible argument positioning** and swapping
-- **Real-world examples**: Event handlers, API requests, validation builders
+#### **Promise.any** ([promise-any.js](./promises/promise-any.js))
+- **"First success wins"** optimistic pattern
+- **AggregateError** handling for all-rejection scenarios
+- **Real-world examples**: API fallbacks, redundant sources
 
-#### 5. **Pipe Method** ([pipe-method.js](./pipe-method.js))
-- **Basic pipe** for function composition
-- **Async pipe** with promise handling
-- **Error handling** and debugging support
-- **Real-world examples**: Data transformation, validation chains, processing pipelines
+#### **Custom Promise Class** ([custom-promise.js](./promises/custom-promise.js))
+- **Full Promise/A+** specification implementation
+- **Enhanced debugging** and custom methods
+- **Real-world examples**: Custom async libraries
 
-### ✅ Array Manipulation
+#### **Cancelable Promises** ([cancelable-promise.js](./promises/cancelable-promise.js))
+- **AbortController** integration for modern cancellation
+- **Resource cleanup** and proper cancellation propagation
+- **Real-world examples**: HTTP requests, long-running tasks
 
-#### 6. **Deep Flatten** ([deep-flatten.js](./deep-flatten.js))
-- **Recursive approach** for nested arrays
-- **Iterative implementation** with stack
-- **Generator-based** for memory efficiency
-- **Real-world examples**: Navigation menus, form errors, data transformation
-
-#### 7. **Negative Array Indexing** ([negative-array-proxy.js](./negative-array-proxy.js))
-- **JavaScript Proxy** implementation
-- **Python-style** negative indexing (arr[-1])
-- **Enhanced features** with range access and multi-dimensional support
-- **Real-world examples**: Time series data, undo/redo systems, circular buffers
-
-### ✅ Promise and Async Patterns
-
-#### 8. **Promise Methods** ([promise-methods.js](./promise-methods.js))
-- **Promise.all** implementation with error handling
-- **Promise.race** for fastest response
-- **Promise.allSettled** for all results regardless of outcome
-- **Promise.any** for first successful result
-- **Advanced utilities**: timeout support, batch processing, health checking
-
-#### 9. **Promise Retry** ([promise-retry.js](./promise-retry.js))
-- **Basic retry** with fixed delay
-- **Exponential backoff** with jitter
-- **Circuit breaker** pattern implementation
-- **Real-world examples**: HTTP clients, database connections, file uploads
-
-### ✅ Object Utilities
-
-#### 10. **Deep Equal** ([deep-equal.js](./deep-equal.js))
-- **Basic deep comparison** with recursion
-- **Enhanced version** with Date, RegExp, and type checking
-- **Circular reference** detection and handling
-- **Performance optimized** with caching
-- **Real-world examples**: Form state tracking, cache key generation, object diffing
-
-#### 11. **Deep Clone** ([deep-clone.js](./deep-clone.js))
-- **Basic cloning** with type support
-- **Comprehensive implementation** handling all JS types
-- **Circular reference** detection and preservation
-- **Real-world examples**: State management, form handling, configuration systems
-
-### ✅ Event Handling
-
-#### 12. **EventEmitter** ([event-emitter.js](./event-emitter.js))
-- **Basic EventEmitter** with on/off/emit
-- **Enhanced features**: once, prepend, error handling
-- **Async support** with promise-based emission
-- **Namespaced events** with wildcard matching
-- **Real-world examples**: State management, HTTP requests, plugin systems
-
-### ✅ UI and Styling
-
-#### 13. **ClassNames Library** ([classnames.js](./classnames.js))
-- **Basic implementation** for dynamic CSS classes
-- **Performance optimized** with deduplication
-- **Advanced features**: CSS-in-JS support, builder pattern
-- **Real-world examples**: React components, theme systems, form validation
-
-### ✅ Performance and Caching
-
-#### 14. **Memoize/Cache** ([memoize-cache.js](./memoize-cache.js))
-- **Basic memoization** with argument caching
-- **LRU cache** with size limits
-- **TTL cache** with expiration
-- **Async memoization** with request deduplication
-- **Real-world examples**: API caching, computation optimization, GraphQL caching
-
-### ✅ Advanced Promise Patterns
-
-#### 15. **Custom Promise Class** ([custom-promise.js](./custom-promise.js))
-- **Full Promise/A+ implementation** with spec compliance
-- **Custom methods** and enhanced error handling
-- **Performance optimized** with proper state management
-- **Real-world examples**: Custom async libraries, framework building
-
-#### 16. **Promise Batching** ([promise-batching.js](./promise-batching.js))
-- **Batch processing** with concurrency control
-- **Load balancing** across multiple workers
-- **Error isolation** and recovery strategies
-- **Real-world examples**: API bulk operations, file processing, data migration
-
-#### 17. **Promise Retry** ([promise-retry.js](./promise-retry.js))
+#### **Promise Retry Logic** ([promise-retry.js](./promises/promise-retry.js))  
 - **Exponential backoff** with configurable strategies
 - **Circuit breaker** pattern for failure handling
-- **Advanced retry** with conditional logic
-- **Real-world examples**: HTTP clients, database connections, external API calls
+- **Real-world examples**: HTTP clients, database connections
 
-#### 18. **Cancelable Promise** ([cancelable-promise.js](./cancelable-promise.js))
-- **AbortController** integration for modern cancellation
-- **Cleanup mechanisms** and resource management
-- **Chaining support** with proper cancellation propagation
-- **Real-world examples**: HTTP requests, file uploads, long-running computations
+#### **Promise Batching** ([promise-batching.js](./promises/promise-batching.js))
+- **Batch processing** with concurrency control
+- **Load balancing** and resource management
+- **Real-world examples**: API bulk operations, file processing
 
-#### 19. **Sequential Promises** ([promises-sequence.js](./promises-sequence.js))
-- **Sequential execution** with result accumulation
-- **Error handling** and partial success scenarios
-- **Progress tracking** and status reporting
-- **Real-world examples**: Data migration, batch processing, workflow execution
+### 🔧 [Functions](./functions/) - Higher-Order Function Utilities
 
-### ✅ Polyfills and Built-ins
+#### **Debounce** ([debounce.js](./functions/debounce.js))
+- **Delay execution** until calls stop coming
+- **Leading/trailing** edge control options
+- **Real-world examples**: Search inputs, API calls, resize handlers
 
-#### 20. **Object.assign Polyfill** ([object-assign.js](./object-assign.js))
-- **Spec-compliant** implementation with edge case handling
-- **Performance optimized** property copying
-- **Type checking** and validation
-- **Real-world examples**: State updates, configuration merging, polyfill libraries
-
-#### 21. **JSON Polyfills** ([json-polyfills.js](./json-polyfills.js))
-- **JSON.stringify** with replacer and spacing support
-- **JSON.parse** with reviver function handling
-- **Edge case management** for circular references and special values
-- **Real-world examples**: Data serialization, API communication, configuration storage
-
-#### 22. **Enhanced typeof** ([custom-typeof.js](./custom-typeof.js))
-- **Accurate type detection** beyond native typeof
-- **Support for arrays, dates, null** and other special cases
-- **Custom type checking** utilities
-- **Real-world examples**: Type validation, runtime checking, library utilities
-
-#### 23. **Timer Polyfills** ([timers.js](./timers.js))
-- **Custom setTimeout/setInterval** implementation
-- **Precise timing** with drift correction
-- **Advanced features** like pause/resume functionality
-- **Real-world examples**: Animation systems, job scheduling, custom timing
-
-#### 24. **Call/Apply/Bind Polyfills** ([call-apply-bind-polyfills.js](./call-apply-bind-polyfills.js))
-- **Function method polyfills** with proper context binding
-- **Edge case handling** for various argument scenarios
-- **Performance considerations** and optimization
-- **Real-world examples**: Framework utilities, method borrowing, context management
-
-### ✅ Utility Libraries
-
-#### 25. **Lodash Methods** ([lodash-methods.js](./lodash-methods.js))
-- **Core utility functions** like get, set, merge, pick
-- **Array methods** with performance optimizations
-- **Object manipulation** utilities
-- **Real-world examples**: Data processing, form handling, configuration management
-
-#### 26. **Promisify Utility** ([promisify.js](./promisify.js))
-- **Callback to Promise** conversion
-- **Node.js style** error-first callback support
-- **Batch promisification** for multiple functions
-- **Real-world examples**: Legacy API integration, Node.js utilities, migration tools
-
-### ✅ Async Coordination
-
-#### 27. **Async Coordination** ([async-coordination.js](./async-coordination.js))
-- **Complex async patterns** like waterfall, parallel, series
-- **Resource coordination** and dependency management
-- **Error handling** and recovery strategies
-- **Real-world examples**: Workflow systems, data processing pipelines, microservice coordination
-
-#### 28. **Map with Concurrency Limit** ([map-limit.js](./map-limit.js))
-- **Controlled concurrency** for batch operations
-- **Resource management** and memory optimization
-- **Progress tracking** and status reporting
-- **Real-world examples**: File processing, API rate limiting, resource-intensive operations
-
-#### 29. **Task Dependency Resolution** ([task-dependency-resolution.js](./task-dependency-resolution.js))
-- **Topological sorting** for task ordering
-- **Circular dependency** detection and handling
-- **Parallel execution** with dependency constraints
-- **Real-world examples**: Build systems, module loaders, workflow orchestration
-
-### ✅ Advanced UI Patterns
-
-#### 30. **Browser History API** ([browser-history.js](./browser-history.js))
-- **Custom navigation** with state management
-- **History manipulation** and event handling
-- **SPA routing** implementation patterns
-- **Real-world examples**: Single-page applications, navigation systems, state persistence
-
-#### 31. **Async Progress Bar** ([async-progress-bar.js](./async-progress-bar.js))
-- **Real-time progress tracking** for async operations
-- **Multiple progress sources** with aggregation
-- **Cancellation support** and error handling
-- **Real-world examples**: File uploads, data processing, long-running tasks
-
-#### 32. **Chain Calculator** ([chain-calculator.js](./chain-calculator.js))
-- **Method chaining** with fluent interface design
-- **Operation composition** and lazy evaluation
-- **Error handling** in chain execution
-- **Real-world examples**: Query builders, configuration APIs, data transformation
-
-### ✅ State Management
-
-#### 33. **Custom Redux with Immer** ([redux-immer.js](./redux-immer.js))
-- **Immutable state updates** with Immer integration
-- **Middleware support** and store composition
-- **DevTools integration** and debugging features
-- **Real-world examples**: State management, Redux alternatives, immutable updates
-
-#### 34. **Virtual DOM** ([virtual-dom.js](./virtual-dom.js))
-- **Virtual DOM creation** and diffing algorithms
-- **Efficient DOM updates** with minimal re-renders
-- **Component lifecycle** and event handling
-- **Real-world examples**: Custom frameworks, rendering optimization, UI libraries
-
-### ✅ Medium Level Challenges
-
-#### 35. **DOM Element Matching** ([dom-element-matching.js](./dom-element-matching.js))
-- **Find corresponding elements** in different DOM tree structures
-- **Tree traversal** and element matching algorithms
-- **Real-world examples**: Component comparison, DOM diffing, testing utilities
-- **Asked at**: Swiggy
-- **Status**: ✅ Problem statement created, implementation pending
-
-#### 36. **Custom Array Sort** ([custom-array-sort.js](./custom-array-sort.js))  
-- **Custom quicksort** implementation with partitioning
-- **In-place sorting** algorithms and optimization
-- **Real-world examples**: Custom sorting logic, performance optimization
-- **Asked at**: Freshworks
-- **Status**: ✅ Problem statement created, implementation pending
-
-#### 37. **Advanced Object Flatten** ([advanced-object-flatten.js](./advanced-object-flatten.js))
-- **Deep nested objects** with arrays and primitive handling
-- **Path-based key generation** with custom separators
-- **Real-world examples**: Form data processing, API payload transformation
-- **Asked at**: Razorpay, PhonePe
-- **Status**: ✅ Problem statement created, implementation pending
-
-#### 38. **Array Push Events** ([array-push-events.js](./array-push-events.js))
-- **Event dispatch** when array elements are added
-- **Array method polyfills** with custom behavior
-- **Real-world examples**: Reactive programming, state change detection
-- **Asked at**: Flipkart, Myntra
-- **Status**: ✅ Problem statement created, implementation pending
-
-#### 39. **Clear All Timeouts** ([clear-all-timeouts.js](./clear-all-timeouts.js))
-- **Timeout tracking** and batch clearing utility  
-- **IIFE patterns** for global state management
-- **Real-world examples**: Cleanup utilities, resource management
-- **Asked at**: PayPal, Adobe
-- **Status**: ✅ Problem statement created, implementation pending
-
-#### 40. **Lodash GroupBy** ([lodash-groupby.js](./lodash-groupby.js))
-- **Collection grouping** by property or function
-- **Deep property path** access and nested grouping
-- **Real-world examples**: Data analysis, reporting, aggregation
-- **Asked at**: Atlassian, Shopify
-- **Status**: ✅ Problem statement created, implementation pending
-
-#### 41. **Advanced Debounce** ([advanced-debounce.js](./advanced-debounce.js))
-- **Leading and trailing** execution options
+#### **Advanced Debounce** ([advanced-debounce.js](./functions/advanced-debounce.js))
 - **Complex timing** control and cancellation
-- **Real-world examples**: Search inputs, API calls, user interaction handling
-- **Asked at**: Uber, Airbnb
-- **Status**: ✅ Problem statement created, implementation pending
+- **Multiple debounce** strategies in one implementation
+- **Real-world examples**: User interaction optimization
 
-### ✅ Hard Level Challenges
+#### **Throttle** ([throttle.js](./functions/throttle.js))
+- **Rate limiting** with guaranteed execution intervals
+- **RequestAnimationFrame** integration for smooth performance
+- **Real-world examples**: Scroll handlers, mouse tracking
 
-#### 42. **Async Progress Manager** ([async-progress-manager.js](./async-progress-manager.js))
-- **Multiple progress bars** with concurrency limits
-- **Resource management** and queue processing
-- **Real-world examples**: File uploads, batch processing, download managers
-- **Asked at**: Microsoft, Google
-- **Status**: ✅ Problem statement created, implementation pending
+#### **Currying** ([currying.js](./functions/currying.js))
+- **Partial application** with arity detection
+- **Infinite currying** for variable arguments
+- **Real-world examples**: Event handlers, configuration builders
 
-#### 43. **Map with Concurrency Limit** ([map-with-limit.js](./map-with-limit.js))
-- **Controlled concurrent** async processing
+#### **Currying with Placeholders** ([currying-placeholders.js](./functions/currying-placeholders.js))
+- **Lodash-style** placeholder implementation  
+- **Flexible argument** positioning and reordering
+- **Real-world examples**: Complex event handlers, API builders
+
+#### **Pipe Method** ([pipe-method.js](./functions/pipe-method.js))
+- **Function composition** with data flow control
+- **Async pipe** support with error handling
+- **Real-world examples**: Data transformation pipelines
+
+### 📊 [Arrays](./arrays/) - Array Processing & Manipulation
+
+#### **Array Chunking** ([chunk.js](./arrays/chunk.js))
+- **Pagination patterns** with configurable chunk sizes
+- **Batch processing** for API calls and performance optimization
+- **Real-world examples**: UI rendering, bulk operations, data pagination
+
+#### **Deep Array Flattening** ([deep-flatten.js](./arrays/deep-flatten.js))
+- **Recursive and iterative** approaches for nested arrays
+- **Generator-based** implementation for memory efficiency
+- **Real-world examples**: Navigation trees, form error aggregation
+
+#### **Negative Array Indexing** ([negative-array-proxy.js](./arrays/negative-array-proxy.js))
+- **Python-style** negative indexing with JavaScript Proxy
+- **Enhanced array access** patterns and boundary handling
+- **Real-world examples**: Time series data, circular buffers
+
+#### **Custom Array Sorting** ([custom-array-sort.js](./arrays/custom-array-sort.js))
+- **In-place sorting** algorithms with custom comparators
+- **Performance optimization** techniques and edge case handling
+- **Real-world examples**: Complex data ordering, custom business logic
+
+#### **Group By Implementation** ([lodash-groupby.js](./arrays/lodash-groupby.js))
+- **Collection grouping** by property paths and functions
+- **Flexible grouping** strategies with nested object support
+- **Real-world examples**: Data analysis, reporting, aggregation
+
+#### **Array with Events** ([array-push-events.js](./arrays/array-push-events.js))
+- **Reactive arrays** with event dispatch on modifications
+- **Observer pattern** implementation for array changes
+- **Real-world examples**: State change detection, reactive programming
+
+### 🔧 [Objects](./objects/) - Object Utilities & Deep Operations
+
+#### **Deep Object Cloning** ([deep-clone.js](./objects/deep-clone.js))
+- **Comprehensive cloning** handling all JavaScript types
+- **Circular reference** detection and preservation
+- **Real-world examples**: State management, immutable updates
+
+#### **Deep Object Equality** ([deep-equal.js](./objects/deep-equal.js))
+- **Recursive comparison** with type-aware checking
+- **Performance optimization** with circular reference handling
+- **Real-world examples**: Form validation, cache key generation
+
+#### **Object Property Selection** ([pick-omit.js](./objects/pick-omit.js))
+- **Property filtering** with pick/omit operations
+- **Data sanitization** and API response cleaning
+- **Real-world examples**: Security filtering, form processing
+
+#### **Deep Path Access** ([path-access.js](./objects/path-access.js))
+- **Safe property access** using string paths
+- **Dynamic object construction** with nested path setting
+- **Real-world examples**: Configuration management, API integration
+
+#### **Object Assignment** ([object-assign.js](./objects/object-assign.js))
+- **Spec-compliant** Object.assign polyfill implementation
+- **Property copying** with descriptor preservation
+- **Real-world examples**: State merging, configuration combination
+
+#### **Advanced Object Flattening** ([advanced-object-flatten.js](./objects/advanced-object-flatten.js))
+- **Nested object** flattening with customizable key generation
+- **Array and primitive** handling with path-based keys
+- **Real-world examples**: Form data processing, API transformation
+
+#### **Deep JSON Diff** ([deep-json-diff.js](./objects/deep-json-diff.js))
+- **Object comparison** with detailed change tracking
+- **From/to value** representation for all modification types
+- **Real-world examples**: Version control, change auditing
+
+### ⚡ [Async Patterns](./async-patterns/) - Advanced Async Coordination
+
+#### **Map with Concurrency Limit** ([map-limit.js](./async-patterns/map-limit.js))
+- **Controlled concurrency** for batch async operations
 - **Resource throttling** and queue management
-- **Real-world examples**: API rate limiting, batch processing, resource optimization
-- **Asked at**: Netflix, Spotify
-- **Status**: ✅ Problem statement created, implementation pending
+- **Real-world examples**: API rate limiting, file processing
 
-#### 44. **Cancelable Promise Utility** ([cancelable-promise-utility.js](./cancelable-promise-utility.js))
-- **Promise cancellation** with custom error handling
-- **AbortController integration** and cleanup mechanisms
-- **Real-world examples**: HTTP requests, long-running tasks, user cancellation
-- **Asked at**: Meta, Amazon
-- **Status**: ✅ Problem statement created, implementation pending
+#### **Advanced Map Limit** ([map-with-limit.js](./async-patterns/map-with-limit.js))
+- **Enhanced concurrency** control with priority queuing
+- **Progress tracking** and status reporting
+- **Real-world examples**: Bulk data processing, resource optimization
 
-#### 45. **TypeAhead LRU Cache** ([typehead-lru-cache.js](./typehead-lru-cache.js))
-- **Least Recently Used** cache for search suggestions
-- **Cache eviction** policies and size management
-- **Real-world examples**: Search autocomplete, API caching, performance optimization  
-- **Asked at**: Dropbox, Stripe
-- **Status**: ✅ Problem statement created, implementation pending
+#### **Sequential Promise Execution** ([promises-sequence.js](./async-patterns/promises-sequence.js))
+- **Waterfall execution** with result accumulation
+- **Error handling** and partial success scenarios
+- **Real-world examples**: Data migration, workflow execution
 
-#### 46. **Deep JSON Diff** ([deep-json-diff.js](./deep-json-diff.js))
-- **Deep object comparison** with difference tracking
-- **From/to value** representation for all data types
-- **Real-world examples**: Version control, change tracking, data synchronization
-- **Asked at**: GitHub, Figma
-- **Status**: ✅ Problem statement created, implementation pending
+#### **Async Coordination Patterns** ([async-coordination.js](./async-patterns/async-coordination.js))
+- **Complex coordination** like parallel, series, waterfall
+- **Resource dependency** management and error recovery
+- **Real-world examples**: Microservice orchestration, pipeline processing
 
-#### 47. **Task Dependency Executor** ([task-dependency-executor.js](./task-dependency-executor.js))
-- **Directed Acyclic Graph** dependency resolution
-- **Parallel execution** with concurrency limits
-- **Topological sorting** and resource management
-- **Real-world examples**: Build systems, workflow orchestration, pipeline processing
-- **Asked at**: Airbnb, Uber
-- **Status**: ✅ Problem statement created, implementation pending
+#### **Task Dependency Resolution** ([task-dependency-resolution.js](./async-patterns/task-dependency-resolution.js))
+- **Topological sorting** for task ordering with dependencies
+- **Parallel execution** within dependency constraints
+- **Real-world examples**: Build systems, module loading
+
+#### **Task Dependency Executor** ([task-dependency-executor.js](./async-patterns/task-dependency-executor.js))
+- **DAG-based** task execution with resource management
+- **Concurrent processing** while respecting dependencies
+- **Real-world examples**: Workflow engines, CI/CD pipelines
+
+#### **Async Progress Manager** ([async-progress-manager.js](./async-patterns/async-progress-manager.js))
+- **Multiple progress** tracking with aggregation
+- **Real-time updates** and cancellation support
+- **Real-world examples**: Download managers, batch operations
+
+#### **Async Progress Bar** ([async-progress-bar.js](./async-patterns/async-progress-bar.js))
+- **Visual progress** tracking for long-running operations
+- **Multiple source** coordination and error handling
+- **Real-world examples**: File uploads, data processing
+
+### 🌐 [DOM Utilities](./dom-utilities/) - Browser & DOM Manipulation
+
+#### **Dynamic ClassNames** ([classnames.js](./dom-utilities/classnames.js))
+- **Conditional CSS** class generation with deduplication
+- **Performance optimized** with CSS-in-JS support
+- **Real-world examples**: React components, theme systems
+
+#### **Browser History API** ([browser-history.js](./dom-utilities/browser-history.js))
+- **SPA navigation** with state management
+- **History manipulation** and popstate handling
+- **Real-world examples**: Single-page applications, routing
+
+#### **DOM Element Matching** ([dom-element-matching.js](./dom-utilities/dom-element-matching.js))
+- **Tree traversal** algorithms for element comparison
+- **Structural matching** between different DOM trees
+- **Real-world examples**: Testing utilities, DOM diffing
+
+### 🔌 [Polyfills](./polyfills/) - JavaScript Built-in Polyfills
+
+#### **Function Methods** ([call-apply-bind-polyfills.js](./polyfills/call-apply-bind-polyfills.js))
+- **Function.prototype** method polyfills (call, apply, bind)
+- **Context binding** and argument handling
+- **Real-world examples**: Legacy browser support, method borrowing
+
+#### **Enhanced typeof** ([custom-typeof.js](./polyfills/custom-typeof.js))
+- **Accurate type detection** beyond native typeof
+- **Custom type checking** for arrays, dates, null
+- **Real-world examples**: Runtime validation, library utilities
+
+#### **JSON Polyfills** ([json-polyfills.js](./polyfills/json-polyfills.js))
+- **JSON.stringify/parse** with full spec compliance
+- **Replacer/reviver** function support and edge cases
+- **Real-world examples**: Data serialization, legacy environments
+
+#### **Timer Polyfills** ([timers.js](./polyfills/timers.js))
+- **Custom setTimeout/setInterval** with precise timing
+- **Advanced features** like pause/resume functionality
+- **Real-world examples**: Animation systems, job scheduling
+
+### 🏗️ [Data Structures](./data-structures/) - Custom Data Structures
+
+#### **Event Emitter** ([event-emitter.js](./data-structures/event-emitter.js))
+- **Observer pattern** with on/off/emit functionality
+- **Advanced features** like once, prepend, wildcards
+- **Real-world examples**: State management, pub/sub systems
+
+#### **LRU Cache** ([typehead-lru-cache.js](./data-structures/typehead-lru-cache.js))
+- **Least Recently Used** cache with size management
+- **O(1) operations** with HashMap + Doubly Linked List
+- **Real-world examples**: Search autocomplete, API caching
+
+#### **Virtual DOM** ([virtual-dom.js](./data-structures/virtual-dom.js))
+- **Virtual DOM** creation and efficient diffing
+- **Component lifecycle** and event handling
+- **Real-world examples**: Custom frameworks, rendering optimization
+
+### 🛠️ [Utilities](./utilities/) - General Purpose Utilities
+
+#### **Memoization Cache** ([memoize-cache.js](./utilities/memoize-cache.js))
+- **Function memoization** with multiple caching strategies
+- **LRU and TTL** cache implementations
+- **Real-world examples**: Expensive computation optimization
+
+#### **Chain Calculator** ([chain-calculator.js](./utilities/chain-calculator.js))
+- **Method chaining** with fluent interface design
+- **Lazy evaluation** and operation composition
+- **Real-world examples**: Query builders, configuration APIs
+
+#### **Timeout Management** ([clear-all-timeouts.js](./utilities/clear-all-timeouts.js))
+- **Global timeout** tracking and batch clearing
+- **Resource management** and cleanup utilities
+- **Real-world examples**: Component unmounting, cleanup patterns
+
+#### **Promisify Utility** ([promisify.js](./utilities/promisify.js))
+- **Callback to Promise** conversion patterns
+- **Node.js style** error-first callback support
+- **Real-world examples**: Legacy API integration
+
+#### **Redux with Immer** ([redux-immer.js](./utilities/redux-immer.js))
+- **Immutable state** updates with Immer integration
+- **Store enhancement** and middleware patterns
+- **Real-world examples**: State management alternatives
+
+### 🔗 [React Hooks](./react-hooks/) - Custom Hook Implementations
+
+#### **usePrevious Hook** ([use-previous.js](./react-hooks/use-previous.js))
+- **Previous value** tracking across renders
+- **Comparison patterns** for detecting state changes
+- **Real-world examples**: Form validation, animation triggers
+
+#### **useIdle Hook** ([use-idle.js](./react-hooks/use-idle.js))
+- **Idle state detection** with configurable timeout
+- **User activity** monitoring and resource management
+- **Real-world examples**: Auto-logout, resource cleanup
+
+#### **useAsync Hook** ([use-async.js](./react-hooks/use-async.js))
+- **Async operation** state management with loading/error states
+- **Request cancellation** and race condition handling
+- **Real-world examples**: API calls, data fetching
+
+#### **useDebounce Hook** ([use-debounce.js](./react-hooks/use-debounce.js))
+- **Value debouncing** with configurable delay
+- **Input optimization** and API call reduction
+- **Real-world examples**: Search inputs, form validation
+
+#### **useThrottle Hook** ([use-throttle.js](./react-hooks/use-throttle.js))
+- **Value throttling** with rate limiting
+- **Performance optimization** for high-frequency updates
+- **Real-world examples**: Scroll handlers, resize events
+
+#### **useResponsive Hook** ([use-responsive.js](./react-hooks/use-responsive.js))
+- **Responsive design** state management
+- **Breakpoint detection** and media query handling
+- **Real-world examples**: Responsive components, mobile layouts
+
+#### **useWhyDidYouUpdate Hook** ([use-why-did-you-update.js](./react-hooks/use-why-did-you-update.js))
+- **Re-render debugging** with prop/state change tracking
+- **Development tools** for performance optimization
+- **Real-world examples**: Component debugging, performance analysis
+
+#### **useOnScreen Hook** ([use-on-screen.js](./react-hooks/use-on-screen.js))
+- **Intersection observer** integration for visibility detection
+- **Lazy loading** and scroll-triggered animations
+- **Real-world examples**: Infinite scrolling, image lazy loading
+
+#### **useScript Hook** ([use-script.js](./react-hooks/use-script.js))
+- **Dynamic script** loading with status tracking
+- **Third-party integration** and dependency management
+- **Real-world examples**: Analytics, payment processing
+
+#### **useOnClickOutside Hook** ([use-on-click-outside.js](./react-hooks/use-on-click-outside.js))
+- **Outside click detection** for modals and dropdowns
+- **Event delegation** and cleanup patterns
+- **Real-world examples**: Modal closing, dropdown menus
+
+#### **useHasFocus Hook** ([use-has-focus.js](./react-hooks/use-has-focus.js))
+- **Focus state tracking** for accessibility
+- **Keyboard navigation** and focus management
+- **Real-world examples**: Form accessibility, keyboard shortcuts
+
+#### **useToggle Hook** ([use-toggle.js](./react-hooks/use-toggle.js))
+- **Boolean state toggling** with optional value support
+- **State management** patterns for UI controls
+- **Real-world examples**: Modal visibility, feature toggles
+
+#### **useCopy Hook** ([use-copy.js](./react-hooks/use-copy.js))
+- **Clipboard API** integration with fallback support
+- **Copy feedback** and error handling
+- **Real-world examples**: Share buttons, code copying
+
+#### **useLockedBody Hook** ([use-locked-body.js](./react-hooks/use-locked-body.js))
+- **Body scroll locking** for modals and overlays
+- **Scroll restoration** and nested lock handling
+- **Real-world examples**: Modal dialogs, mobile menus
+
+### ⚛️ [React Components](./react-components/) - Interactive Component Patterns
+
+#### **Number Increment Counter** ([number-increment-counter.js](./react-components/number-increment-counter.js))
+- **Animated counting** with easing and duration control
+- **State management** for increment/decrement operations
+- **Real-world examples**: Statistics displays, progress indicators
+
+#### **Capture Product Visible in Viewport** ([product-viewport-tracker.js](./react-components/product-viewport-tracker.js))
+- **Viewport visibility** tracking with intersection observer
+- **Analytics integration** for product impression tracking
+- **Real-world examples**: E-commerce analytics, ad visibility
+
+#### **Highlight Text on Selection** ([text-highlight-selection.js](./react-components/text-highlight-selection.js))
+- **Text selection** detection and highlighting
+- **Range API** integration with custom styling
+- **Real-world examples**: Note-taking apps, text annotation
+
+### 🚀 [React Performance](./react-performance/) - Optimization Patterns
+
+#### **Batch API Calls in Sequence** ([batch-api-sequence.js](./react-performance/batch-api-sequence.js))
+- **Sequential batching** with configurable batch sizes
+- **Request coordination** and error recovery
+- **Real-world examples**: Data synchronization, bulk operations
+
+## ❌ Problems to Implement
+
+Based on the comprehensive JavaScript interview questions list, here are the remaining problems that need implementation:
+
+### Promise/Async Patterns (1 missing)
+- ❌ **Problem #93**: Make high priority API call
+
+### Data Structures & Algorithms (10 missing)
+- ❌ **Problem #80**: Trie data structure implementation
+- ❌ **Problem #81**: First and last occurrence in sorted array
+- ❌ **Problem #84**: Create analytics SDK
+- ❌ **Problem #85**: Check if binary tree is full
+- ❌ **Problem #86**: Get height and width of binary tree
+- ❌ **Problem #97**: In-memory search engine implementation
+- ❌ **Problem #98**: Fuzzy search function
+- ❌ **Problem #96**: Concurrent history tracking system
+- ❌ **Problem #78**: Throttle array of tasks
+- ❌ **Problem #79**: Decode a string
+
+### Utility Functions (8 missing)
+- ❌ **Problem #27**: Check function called with new keyword
+- ❌ **Problem #29**: Create toggle function
+- ❌ **Problem #30**: Create sampling function  
+- ❌ **Problem #31**: Make function sleep
+- ❌ **Problem #33**: Filter multidimensional array
+- ❌ **Problem #34**: Count element in multidimensional array
+- ❌ **Problem #35**: Convert HEX to RGB
+- ❌ **Problem #36**: Convert RGB to HEX
+
+### DOM & Browser APIs (8 missing)
+- ❌ **Problem #70**: HTML encoding of string
+- ❌ **Problem #71**: CSS selector generator
+- ❌ **Problem #75**: Polyfill for getElementsByClassName()
+- ❌ **Problem #76**: Polyfill for getElementsByClassNameHierarchy()
+- ❌ **Problem #77**: Find element with given color property
+- ❌ **Problem #87**: Polyfill for extend method
+- ❌ **Problem #88**: Animate elements in sequence
+- ❌ **Problem #100**: Highlight words in string
+
+### Storage & State Management (2 missing)
+- ❌ **Problem #89**: localStorage with expiry
+- ❌ **Problem #90**: Custom cookie implementation
+
+### Advanced Function Patterns (3 missing)
+- ❌ **Problem #37**: In-memory filesystem library
+- ❌ **Problem #38**: Basic implementation of streams API
+- ❌ **Problem #72**: Aggregate input values
+
+### Array & Object Utilities (4 missing)
+- ❌ **Problem #61**: Array iterator implementation
+- ❌ **Problem #63**: Filter array of objects on value/index
+- ❌ **Problem #64**: Aggregate array of objects on given key
+- ❌ **Problem #65**: Convert entity relation array to ancestry tree string
+
+### React Interview Questions (18 missing)
+
+#### React Hooks (14 missing)
+- ❌ **usePrevious() hook**: Track previous values across renders
+- ❌ **useIdle() hook**: Detect user idle state with timeout
+- ❌ **useAsync() hook**: Handle async operations with loading states
+- ❌ **useDebounce() hook**: Debounce values with configurable delay
+- ❌ **useThrottle() hook**: Throttle values with rate limiting
+- ❌ **useResponsive() hook**: Responsive breakpoint detection
+- ❌ **useWhyDidYouUpdate() hook**: Debug component re-renders
+- ❌ **useOnScreen() hook**: Intersection observer for visibility
+- ❌ **useScript() hook**: Dynamic script loading with status
+- ❌ **useOnClickOutside() hook**: Outside click detection
+- ❌ **useHasFocus() hook**: Focus state tracking
+- ❌ **useToggle() hook**: Boolean state toggling utility
+- ❌ **useCopy() hook**: Clipboard API integration
+- ❌ **useLockedBody() hook**: Body scroll locking for modals
+
+#### React Components (3 missing)
+- ❌ **Number Increment counter**: Animated counting component
+- ❌ **Capture product visible in viewport**: Viewport tracking
+- ❌ **Highlight text on selection**: Text selection highlighting
+
+#### React Performance (1 missing)
+- ❌ **Batch API calls in sequence**: Sequential request batching
 
 ## 🚧 Future Enhancements
 
@@ -346,138 +459,63 @@ Potential areas for expansion:
 - **IndexedDB** wrapper utilities
 - **Performance monitoring** tools
 
-## Usage Examples
+## 🎯 Interview Preparation Benefits
 
-Each implementation file includes:
+### **Focused Learning**
+- **One problem per file** - Easy to concentrate on specific concepts
+- **50-150 lines each** - Digestible, interview-sized implementations
+- **30-50% comments** - Understanding-focused rather than memorization
 
-1. **Multiple Approaches** - Different ways to solve the same problem
-2. **Detailed Comments** - Step-by-step explanations of the logic
-3. **Real-world Use Cases** - Practical applications and patterns
-4. **Test Cases** - Examples demonstrating the functionality
-5. **Performance Considerations** - Time/space complexity analysis
-6. **Interview Tips** - Key points to discuss in technical interviews
+### **Real-world Context** 
+- **Practical examples** in every implementation
+- **Performance considerations** and trade-off discussions
+- **Industry patterns** and best practices
 
-### Example Structure
+### **Technical Depth**
+- **Multiple approaches** when relevant (basic → advanced)
+- **Edge case handling** and error management
+- **Time/space complexity** analysis included
 
-```javascript
-/**
- * File: example.js
- * Description: Multiple implementations with detailed explanations
- * 
- * Learning objectives:
- * - Understand core concepts
- * - Learn different implementation approaches
- * - See real-world applications
- */
+## 🚀 Getting Started
 
-// =======================
-// Approach 1: Basic Implementation
-// =======================
-
-function basicExample() {
-  // Implementation with detailed comments
-}
-
-// =======================
-// Approach 2: Advanced Features  
-// =======================
-
-function advancedExample() {
-  // Enhanced version with more features
-}
-
-// =======================
-// Real-world Use Cases
-// =======================
-
-function createRealWorldExample() {
-  // Practical applications and patterns
-}
-
-// Export all implementations
-module.exports = {
-  basicExample,
-  advancedExample,
-  createRealWorldExample
-};
-```
-
-## Key Interview Topics Covered
-
-### Technical Concepts
-- **Closures and Scope** - Debounce, throttle, currying implementations
-- **Promises and Async/Await** - Promise methods, error handling, concurrency
-- **Proxy and Metaprogramming** - Negative indexing, method interception
-- **Recursion and Iteration** - Deep operations, tree traversal
-- **Event-Driven Architecture** - Observer pattern, pub/sub systems
-
-### Performance Optimization  
-- **Memory Management** - Cleanup, garbage collection, WeakMap usage
-- **Time Complexity** - Algorithm analysis and optimization
-- **Caching Strategies** - Memoization, result caching
-- **Lazy Evaluation** - Generators, on-demand computation
-
-### Design Patterns
-- **Observer Pattern** - EventEmitter, state management
-- **Factory Pattern** - Object creation and configuration
-- **Proxy Pattern** - Transparent object wrapping
-- **Strategy Pattern** - Configurable behavior selection
-
-## Running the Code
-
-Each file is a standalone Node.js module that can be executed directly:
-
+### **Browse by Category**
+Each folder contains focused implementations perfect for interview prep:
 ```bash
-node debounce.js
-node throttle.js
-node currying.js
-# etc.
+cd promises/     # Promise patterns and polyfills
+cd functions/    # Higher-order functions and utilities
+cd arrays/       # Array processing and manipulation
+cd objects/      # Object utilities and deep operations
+cd async-patterns/ # Advanced async coordination
+cd dom-utilities/  # Browser and DOM manipulation
+cd polyfills/      # JavaScript built-in polyfills  
+cd data-structures/ # Custom data structures
+cd utilities/      # General purpose utilities
+cd react-hooks/    # Custom React hook implementations
+cd react-components/ # Interactive React component patterns
+cd react-performance/ # React optimization patterns
 ```
 
-The implementations use only standard JavaScript features and don't require external dependencies.
+### **Run Individual Files**
+Each file is a standalone implementation:
+```bash
+node promises/promise-all.js
+node functions/debounce.js
+node arrays/chunk.js
+node react-hooks/use-debounce.js
+node react-components/number-increment-counter.js
+node react-performance/batch-api-sequence.js
+```
 
-## Contributing
+## 📖 Usage Examples
 
-When adding new implementations, please follow these guidelines:
+Each implementation includes:
 
-1. **Multiple Approaches** - Provide at least 2-3 different implementation strategies
-2. **Comprehensive Comments** - Explain the "why" behind each decision
-3. **Real-world Examples** - Include practical use cases and applications
-4. **Performance Analysis** - Document time/space complexity
-5. **Error Handling** - Handle edge cases and invalid inputs
-6. **Consistent Structure** - Follow the established file organization
-
-## Interview Preparation Tips
-
-### Before the Interview
-1. **Understand the Concepts** - Don't just memorize, understand the underlying principles
-2. **Practice Multiple Approaches** - Be ready to discuss trade-offs between different solutions
-3. **Know Real-world Applications** - Be able to explain when and why you'd use each pattern
-
-### During the Interview
-1. **Think Out Loud** - Explain your reasoning as you code
-2. **Start Simple** - Begin with a basic implementation, then enhance it
-3. **Consider Edge Cases** - Think about error conditions and boundary cases
-4. **Discuss Trade-offs** - Compare different approaches and their implications
-
-### Common Follow-up Questions
-- "How would you optimize this for performance?"
-- "What happens with very large inputs?"
-- "How would you handle errors in this implementation?"
-- "Can you think of any real-world scenarios where this would be useful?"
-
-## Resources
-
-### Additional Learning
-- [MDN Web Docs](https://developer.mozilla.org/) - Comprehensive JavaScript reference
-- [JavaScript.info](https://javascript.info/) - Modern JavaScript tutorial
-- [You Don't Know JS](https://github.com/getify/You-Dont-Know-JS) - Deep JavaScript concepts
-
-### Practice Platforms
-- [LeetCode](https://leetcode.com/) - Algorithm and data structure problems
-- [CodeSignal](https://codesignal.com/) - Technical interview practice
-- [HackerRank](https://www.hackerrank.com/) - Programming challenges
+1. **Comprehensive Comments** - Step-by-step explanations
+2. **Multiple Use Cases** - Real-world application examples
+3. **Error Handling** - Production-ready edge case management
+4. **Performance Analysis** - Time/space complexity documentation
+5. **Test Examples** - Demonstration of functionality
 
 ---
 
-*This collection represents common frontend coding challenges based on real interview experiences. Each implementation prioritizes understanding and practical application over pure performance.*
+*This collection represents a curated set of frontend coding challenges, organized for optimal interview preparation and learning. Each implementation prioritizes understanding over memorization, with extensive comments and real-world context.*

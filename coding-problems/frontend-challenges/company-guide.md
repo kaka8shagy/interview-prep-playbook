@@ -34,7 +34,12 @@ Strategic preparation guide mapping problems to company interview patterns and e
   - [animate-sequence.js](./dom-utilities/animate-sequence.js) - Complex animation systems
   - [find-color-property.js](./dom-utilities/find-color-property.js) - Advanced DOM analysis
 
-- **Security & Browser APIs**
+- **Security & Modern APIs**
+  - [xss-prevention-suite.js](./security/xss-prevention-suite.js) - Comprehensive XSS prevention
+  - [input-validation-framework.js](./security/input-validation-framework.js) - Enterprise validation systems
+  - [intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js) - Performance-optimized viewport tracking
+  - [http-interceptor-system.js](./network/http-interceptor-system.js) - Production HTTP handling
+  - [mini-redux-implementation.js](./state-management/mini-redux-implementation.js) - State management architecture
   - [html-encoding.js](./dom-utilities/html-encoding.js) - XSS prevention at scale
   - [css-selector-generator.js](./dom-utilities/css-selector-generator.js) - Dynamic UI automation
   - [custom-cookies.js](./storage/custom-cookies.js) - Secure client storage
@@ -55,12 +60,14 @@ Strategic preparation guide mapping problems to company interview patterns and e
   - [memoize-cache.js](./utilities/memoize-cache.js) - Function optimization
   - [typehead-lru-cache.js](./data-structures/typehead-lru-cache.js) - Search optimization
 
-- **User Experience Utilities**
+- **User Experience & Modern Features**
+  - [intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js) - Lazy loading and infinite scroll
   - [lodash-groupby.js](./arrays/lodash-groupby.js) - Data organization for UI
   - [async-progress-bar.js](./async-patterns/async-progress-bar.js) - User feedback systems
   - [highlight-words.js](./dom-utilities/highlight-words.js) - Search result highlighting
   - [hex-rgb-converter.js](./utilities/hex-rgb-converter.js) - Theme and branding systems
   - [localstorage-expiry.js](./storage/localstorage-expiry.js) - User preference storage
+  - [input-validation-framework.js](./security/input-validation-framework.js) - User input handling
 
 - **Concurrent Processing**
   - [map-limit.js](./async-patterns/map-limit.js) - Background task management
@@ -108,10 +115,13 @@ Strategic preparation guide mapping problems to company interview patterns and e
   - [cancelable-promise.js](./promises/cancelable-promise.js) - Transaction safety
 
 - **Data Validation & Processing**
+  - [input-validation-framework.js](./security/input-validation-framework.js) - Enterprise validation systems  
   - [deep-equal.js](./objects/deep-equal.js) - Accurate comparisons
   - [deep-json-diff.js](./objects/deep-json-diff.js) - Change tracking
 
-- **Security-Focused Patterns**
+- **Security & Reliability**
+  - [xss-prevention-suite.js](./security/xss-prevention-suite.js) - Comprehensive XSS protection
+  - [http-interceptor-system.js](./network/http-interceptor-system.js) - Robust API handling with retry logic
   - [analytics-sdk.js](./utilities/analytics-sdk.js) - Secure data collection
   - [redux-immer.js](./utilities/redux-immer.js) - Immutable state updates
 

@@ -1,6 +1,6 @@
 # Frontend Problems by Category
 
-Complete categorized listing of all **95+ frontend interview problems** with direct links to implementations.
+Complete categorized listing of all **105+ frontend interview problems** with direct links to implementations.
 
 ## 🔧 Functions
 
@@ -163,6 +163,32 @@ Complete categorized listing of all **95+ frontend interview problems** with dir
 **Performance optimization patterns and techniques for React applications**
 
 - **Sequential Request Batching** → [sequential-request-batching.js](./react-performance/sequential-request-batching.js)
+
+## 🔒 Security & Validation
+
+**Input validation, XSS prevention, and security-focused implementations**
+
+- **XSS Prevention Suite** → [xss-prevention-suite.js](./security/xss-prevention-suite.js)
+- **Input Validation Framework** → [input-validation-framework.js](./security/input-validation-framework.js)
+
+## 🌐 Browser APIs
+
+**Modern browser APIs and viewport-based interactions**
+
+- **Intersection Observer Manager** → [intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js)
+
+## 📊 State Management
+
+**State containers, observers, and data flow patterns**
+
+- **Mini-Redux Implementation** → [mini-redux-implementation.js](./state-management/mini-redux-implementation.js)
+- **Observer Pattern System** → [observer-pattern-system.js](./state-management/observer-pattern-system.js)
+
+## 🌐 Network & Communication
+
+**HTTP handling, request optimization, and network resilience**
+
+- **HTTP Interceptor System** → [http-interceptor-system.js](./network/http-interceptor-system.js)
 
 ---
 

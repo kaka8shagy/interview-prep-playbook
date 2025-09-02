@@ -16,6 +16,8 @@ Progressive skill development path with problems organized by experience level a
 - **[debounce.js](./functions/debounce.js)** - Master closures and timing
 - **[throttle.js](./functions/throttle.js)** - Rate limiting fundamentals  
 - **[deep-flatten.js](./arrays/deep-flatten.js)** - Recursion and array manipulation
+- **[xss-prevention-suite.js](./security/xss-prevention-suite.js)** - Basic security patterns
+- **[input-validation-framework.js](./security/input-validation-framework.js)** - Data validation fundamentals
 - **[memoize-cache.js](./utilities/memoize-cache.js)** - Caching and optimization basics
 - **[sleep-function.js](./utilities/sleep-function.js)** - Promise-based delays and timing
 - **[html-encoding.js](./dom-utilities/html-encoding.js)** - XSS prevention and string safety
@@ -40,6 +42,8 @@ Progressive skill development path with problems organized by experience level a
 - Performance optimization
 
 **Challenge Problems:**
+- **[intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js)** - Modern browser APIs
+- **[http-interceptor-system.js](./network/http-interceptor-system.js)** - Network handling patterns
 - **[advanced-debounce.js](./functions/advanced-debounce.js)** - Advanced timing control
 - **[promise-all.js](./promises/promise-all.js)** - Parallel async management
 - **[deep-clone.js](./objects/deep-clone.js)** - Handle complex data structures
@@ -77,6 +81,11 @@ Progressive skill development path with problems organized by experience level a
 - Advanced error handling
 
 **Mastery Problems:**
+- **[mini-redux-implementation.js](./state-management/mini-redux-implementation.js)** - Complete state management system
+- **[xss-prevention-suite.js](./security/xss-prevention-suite.js)** (Production approach) - Enterprise security systems
+- **[input-validation-framework.js](./security/input-validation-framework.js)** (Async approach) - Advanced validation architecture
+- **[http-interceptor-system.js](./network/http-interceptor-system.js)** (Production approach) - Enterprise HTTP client
+- **[intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js)** (Production approach) - Complex viewport management
 - **[promise-retry.js](./promises/promise-retry.js)** - Circuit breaker patterns
 - **[typehead-lru-cache.js](./data-structures/typehead-lru-cache.js)** - Advanced caching algorithms
 - **[pipe-method.js](./functions/pipe-method.js)** - Async pipelines with error handling

@@ -14,6 +14,12 @@ Fast lookup table for the most frequently asked frontend interview problems. Per
 | **Caching/Memoization** | [memoize-cache.js](./utilities/memoize-cache.js) | ⭐⭐⭐ |
 | **Event Handling** | [event-emitter.js](./data-structures/event-emitter.js) | ⭐⭐⭐ |
 | **Polyfills** | [call-apply-bind-polyfills.js](./polyfills/call-apply-bind-polyfills.js) | ⭐⭐⭐ |
+| **XSS Prevention** | [xss-prevention-suite.js](./security/xss-prevention-suite.js) | ⭐⭐⭐⭐⭐ |
+| **Input Validation** | [input-validation-framework.js](./security/input-validation-framework.js) | ⭐⭐⭐⭐ |
+| **HTTP Interceptors** | [http-interceptor-system.js](./network/http-interceptor-system.js) | ⭐⭐⭐⭐ |
+| **Redux Implementation** | [mini-redux-implementation.js](./state-management/mini-redux-implementation.js) | ⭐⭐⭐⭐ |
+| **Observer Pattern** | [observer-pattern-system.js](./state-management/observer-pattern-system.js) | ⭐⭐⭐⭐⭐ |
+| **Intersection Observer** | [intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js) | ⭐⭐⭐ |
 | **Method Chaining** | [chain-calculator.js](./utilities/chain-calculator.js) | ⭐⭐ |
 | **Sequential Promises** | [promises-sequence.js](./async-patterns/promises-sequence.js) | ⭐⭐ |
 | **Progress Tracking** | [async-progress-bar.js](./async-patterns/async-progress-bar.js) | ⭐⭐ |
@@ -58,13 +64,27 @@ Fast lookup table for the most frequently asked frontend interview problems. Per
 - [cancelable-promise.js](./promises/cancelable-promise.js) - Cancelable operations
 - [event-emitter.js](./data-structures/event-emitter.js) - Event-driven communication
 
-### 🌐 DOM & Browser APIs
-**When to use:** DOM manipulation, user interaction, security
+### 🔒 Security & Validation
+**When to use:** User input handling, XSS prevention, data integrity
 
+- [xss-prevention-suite.js](./security/xss-prevention-suite.js) - HTML sanitization and XSS protection
+- [input-validation-framework.js](./security/input-validation-framework.js) - Schema validation and type checking
+
+### 🌐 DOM & Browser APIs
+**When to use:** DOM manipulation, user interaction, viewport tracking
+
+- [intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js) - Lazy loading and infinite scroll
 - [html-encoding.js](./dom-utilities/html-encoding.js) - XSS prevention and string safety
 - [css-selector-generator.js](./dom-utilities/css-selector-generator.js) - Dynamic element identification
 - [highlight-words.js](./dom-utilities/highlight-words.js) - Text search and highlighting
 - [polyfill-getelementsbyclassname.js](./dom-utilities/polyfill-getelementsbyclassname.js) - Cross-browser compatibility
+
+### 📊 State Management & Network
+**When to use:** Application state, API communication, data flow
+
+- [mini-redux-implementation.js](./state-management/mini-redux-implementation.js) - Predictable state container
+- [observer-pattern-system.js](./state-management/observer-pattern-system.js) - Reactive state with automatic cleanup
+- [http-interceptor-system.js](./network/http-interceptor-system.js) - Request/response transformation
 
 ### 💾 Storage & State
 **When to use:** Data persistence, caching, user preferences
@@ -84,29 +104,29 @@ Fast lookup table for the most frequently asked frontend interview problems. Per
 ### If you have 15 minutes before interview:
 1. **[debounce.js](./functions/debounce.js)** - Most common question
 2. **[promise-all.js](./promises/promise-all.js)** - Shows async understanding  
-3. **[deep-clone.js](./objects/deep-clone.js)** - Demonstrates edge case thinking
+3. **[xss-prevention-suite.js](./security/xss-prevention-suite.js)** - Critical security knowledge
 
 ### If you have 30 minutes:
 Add these to the above:
-4. **[throttle.js](./functions/throttle.js)** - Complements debounce knowledge
-5. **[currying.js](./functions/currying.js)** - Shows functional programming skills
-6. **[event-emitter.js](./data-structures/event-emitter.js)** - Architecture understanding
+4. **[input-validation-framework.js](./security/input-validation-framework.js)** - Data integrity patterns
+5. **[http-interceptor-system.js](./network/http-interceptor-system.js)** - Network handling skills
+6. **[intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js)** - Modern API usage
 
 ### If you have 1 hour:
 Add advanced patterns:
-7. **[promises-sequence.js](./async-patterns/promises-sequence.js)** - Complex async coordination
-8. **[memoize-cache.js](./utilities/memoize-cache.js)** - Performance optimization
-9. **[call-apply-bind-polyfills.js](./polyfills/call-apply-bind-polyfills.js)** - Deep JavaScript knowledge
+7. **[mini-redux-implementation.js](./state-management/mini-redux-implementation.js)** - State management mastery
+8. **[throttle.js](./functions/throttle.js)** - Rate limiting patterns
+9. **[deep-clone.js](./objects/deep-clone.js)** - Edge case thinking
 
 ## 🎪 Company Quick Prep
 
 ### FAANG Interview (Same Day)
 Focus on these 5 problems with edge cases:
-- [debounce.js](./functions/debounce.js) + [throttle.js](./functions/throttle.js)
-- [promise-all.js](./promises/promise-all.js)  
-- [deep-clone.js](./objects/deep-clone.js)
-- [currying.js](./functions/currying.js)
-- [task-dependency-resolution.js](./async-patterns/task-dependency-resolution.js)
+- [xss-prevention-suite.js](./security/xss-prevention-suite.js) - Security-first mindset
+- [mini-redux-implementation.js](./state-management/mini-redux-implementation.js) - Architecture skills
+- [http-interceptor-system.js](./network/http-interceptor-system.js) - System design thinking
+- [intersection-observer-manager.js](./browser-apis/intersection-observer-manager.js) - Performance optimization
+- [input-validation-framework.js](./security/input-validation-framework.js) - Data integrity
 
 ### Startup Interview (Same Day)
 Focus on practical implementations:

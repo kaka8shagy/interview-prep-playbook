@@ -1,12 +1,12 @@
 # Frontend Coding Challenges
 
-Comprehensive implementations of **95+ frontend interview problems** frequently asked at top tech companies. Each solution includes multiple approaches, extensive comments, and real-world examples.
+Comprehensive implementations of **105+ frontend interview problems** frequently asked at top tech companies. Each solution includes multiple approaches, extensive comments, and real-world examples.
 
 ## 🧭 Navigation
 
 | What you need | Guide to use |
 |---------------|-------------|
-| **Browse all problems** | [📋 Problems by Category](./problems-by-category.md) - Complete listing of all 95+ problems organized by topic |
+| **Browse all problems** | [📋 Problems by Category](./problems-by-category.md) - Complete listing of all 105+ problems organized by topic |
 | **Quick interview prep** | [⚡ Quick Reference](./quick-reference.md) - Most frequently asked problems with 15-min prep guide |
 | **Company-specific prep** | [🏢 Company Guide](./company-guide.md) - Problems mapped to Google, Meta, startups, and other company types |
 | **Skill-level guidance** | [📈 Difficulty Guide](./difficulty-guide.md) - Learning path from entry-level to senior, with time estimates |
@@ -32,7 +32,7 @@ Comprehensive implementations of **95+ frontend interview problems** frequently 
 
 ## 📂 Directory Structure
 
-This directory contains **14 topic-based folders** with focused implementations:
+This directory contains **18 topic-based folders** with focused implementations:
 
 ```
 frontend-challenges/
@@ -49,6 +49,10 @@ frontend-challenges/
 ├── react-hooks/         # Custom hooks for common patterns
 ├── react-components/    # React component implementations
 ├── react-performance/   # React performance optimization patterns
+├── security/            # XSS prevention, input validation, CSRF protection
+├── browser-apis/        # Intersection Observer, ResizeObserver, modern APIs
+├── state-management/    # Redux implementation, observer patterns
+├── network/             # HTTP interceptors, retry logic, request handling
 └── guides/              # This organized documentation
 ```
 

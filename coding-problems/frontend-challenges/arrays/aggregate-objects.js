@@ -32,4 +32,731 @@ function aggregateObjects(objects, options = {}) {
     throw new Error('Objects must be an array');
   }
   
-  if (!groupBy) {\n    throw new Error('GroupBy key(s) must be specified');\n  }\n  \n  const grouped = new Map();\n  \n  // Group objects by key(s)\n  objects.forEach(obj => {\n    const key = generateGroupKey(obj, groupBy);\n    \n    if (!grouped.has(key)) {\n      grouped.set(key, []);\n    }\n    \n    grouped.get(key).push(obj);\n  });\n  \n  // Apply aggregations to each group\n  const results = [];\n  \n  for (const [groupKey, groupObjects] of grouped) {\n    const result = {\n      groupKey: parseGroupKey(groupKey, groupBy),\n      count: groupObjects.length,\n      items: groupObjects\n    };\n    \n    // Apply each aggregation\n    for (const [aggName, aggConfig] of Object.entries(aggregations)) {\n      result[aggName] = calculateAggregation(groupObjects, aggConfig, defaultValue);\n    }\n    \n    results.push(result);\n  }\n  \n  return results;\n}\n\n/**\n * Generate consistent group key from object and groupBy configuration\n */\nfunction generateGroupKey(obj, groupBy) {\n  if (typeof groupBy === 'string') {\n    const value = getNestedValue(obj, groupBy);\n    return JSON.stringify({ [groupBy]: value });\n  }\n  \n  if (Array.isArray(groupBy)) {\n    const keyObj = {};\n    groupBy.forEach(key => {\n      keyObj[key] = getNestedValue(obj, key);\n    });\n    return JSON.stringify(keyObj);\n  }\n  \n  if (typeof groupBy === 'object') {\n    const keyObj = {};\n    for (const [alias, path] of Object.entries(groupBy)) {\n      keyObj[alias] = getNestedValue(obj, path);\n    }\n    return JSON.stringify(keyObj);\n  }\n  \n  throw new Error('Invalid groupBy configuration');\n}\n\n/**\n * Parse group key back to readable format\n */\nfunction parseGroupKey(keyString, groupBy) {\n  try {\n    const parsed = JSON.parse(keyString);\n    \n    if (typeof groupBy === 'string') {\n      return parsed[groupBy];\n    }\n    \n    return parsed;\n  } catch (error) {\n    return keyString;\n  }\n}\n\n/**\n * Get nested property value\n */\nfunction getNestedValue(obj, path) {\n  if (!obj || typeof obj !== 'object') return undefined;\n  \n  return path.split('.').reduce((current, key) => {\n    return current && current[key] !== undefined ? current[key] : undefined;\n  }, obj);\n}\n\n/**\n * Calculate aggregation for a group of objects\n */\nfunction calculateAggregation(objects, aggConfig, defaultValue) {\n  if (typeof aggConfig === 'string') {\n    // Simple property aggregation\n    const values = objects.map(obj => getNestedValue(obj, aggConfig))\n                          .filter(val => val !== undefined && val !== null);\n                          \n    return values.length > 0 ? values : defaultValue;\n  }\n  \n  if (typeof aggConfig === 'function') {\n    // Custom aggregation function\n    return aggConfig(objects);\n  }\n  \n  if (typeof aggConfig === 'object' && aggConfig !== null) {\n    const { property, operation, defaultValue: aggDefault } = aggConfig;\n    const values = objects.map(obj => getNestedValue(obj, property))\n                          .filter(val => typeof val === 'number' && !isNaN(val));\n    \n    if (values.length === 0) {\n      return aggDefault !== undefined ? aggDefault : defaultValue;\n    }\n    \n    switch (operation) {\n      case 'sum': return values.reduce((sum, val) => sum + val, 0);\n      case 'avg': return values.reduce((sum, val) => sum + val, 0) / values.length;\n      case 'min': return Math.min(...values);\n      case 'max': return Math.max(...values);\n      case 'count': return values.length;\n      case 'median': return calculateMedian(values);\n      case 'mode': return calculateMode(values);\n      case 'std': return calculateStandardDeviation(values);\n      default: throw new Error(`Unknown aggregation operation: ${operation}`);\n    }\n  }\n  \n  throw new Error('Invalid aggregation configuration');\n}\n\n/**\n * Calculate median value\n */\nfunction calculateMedian(values) {\n  const sorted = [...values].sort((a, b) => a - b);\n  const mid = Math.floor(sorted.length / 2);\n  \n  return sorted.length % 2 !== 0\n    ? sorted[mid]\n    : (sorted[mid - 1] + sorted[mid]) / 2;\n}\n\n/**\n * Calculate mode (most frequent value)\n */\nfunction calculateMode(values) {\n  const frequency = new Map();\n  \n  values.forEach(val => {\n    frequency.set(val, (frequency.get(val) || 0) + 1);\n  });\n  \n  let maxFreq = 0;\n  let mode = null;\n  \n  for (const [value, freq] of frequency) {\n    if (freq > maxFreq) {\n      maxFreq = freq;\n      mode = value;\n    }\n  }\n  \n  return mode;\n}\n\n/**\n * Calculate standard deviation\n */\nfunction calculateStandardDeviation(values) {\n  const mean = values.reduce((sum, val) => sum + val, 0) / values.length;\n  const squaredDiffs = values.map(val => Math.pow(val - mean, 2));\n  const avgSquaredDiff = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;\n  \n  return Math.sqrt(avgSquaredDiff);\n}\n\n// =======================\n// Approach 2: Advanced Aggregation Engine\n// =======================\n\n/**\n * Advanced aggregation engine with multiple grouping levels and optimizations\n */\nclass AggregationEngine {\n  constructor(objects = []) {\n    this.objects = objects;\n    this.results = null;\n    this.groupingCache = new Map();\n  }\n  \n  /**\n   * Set data source\n   */\n  setData(objects) {\n    this.objects = objects;\n    this.clearCache();\n    return this;\n  }\n  \n  /**\n   * Add data incrementally\n   */\n  addData(newObjects) {\n    if (!Array.isArray(newObjects)) {\n      newObjects = [newObjects];\n    }\n    \n    this.objects.push(...newObjects);\n    this.clearCache();\n    return this;\n  }\n  \n  /**\n   * Multi-level grouping and aggregation\n   */\n  groupBy(groupingLevels) {\n    if (!Array.isArray(groupingLevels)) {\n      groupingLevels = [groupingLevels];\n    }\n    \n    this.results = this.performMultiLevelGrouping(this.objects, groupingLevels, 0);\n    return this;\n  }\n  \n  /**\n   * Perform multi-level recursive grouping\n   */\n  performMultiLevelGrouping(objects, groupingLevels, level) {\n    if (level >= groupingLevels.length) {\n      return objects;\n    }\n    \n    const currentLevel = groupingLevels[level];\n    const grouped = new Map();\n    \n    // Group by current level\n    objects.forEach(obj => {\n      const key = this.getGroupingKey(obj, currentLevel);\n      \n      if (!grouped.has(key)) {\n        grouped.set(key, [];\n      }\n      \n      grouped.get(key).push(obj);\n    });\n    \n    // Process each group\n    const results = [];\n    \n    for (const [groupKey, groupObjects] of grouped) {\n      const groupResult = {\n        level: level,\n        key: this.parseGroupingKey(groupKey, currentLevel),\n        count: groupObjects.length\n      };\n      \n      // Apply aggregations for current level\n      if (currentLevel.aggregations) {\n        for (const [aggName, aggConfig] of Object.entries(currentLevel.aggregations)) {\n          groupResult[aggName] = calculateAggregation(groupObjects, aggConfig);\n        }\n      }\n      \n      // Recurse to next level if exists\n      if (level + 1 < groupingLevels.length) {\n        groupResult.subgroups = this.performMultiLevelGrouping(\n          groupObjects,\n          groupingLevels,\n          level + 1\n        );\n      } else {\n        groupResult.items = groupObjects;\n      }\n      \n      results.push(groupResult);\n    }\n    \n    return results;\n  }\n  \n  /**\n   * Get grouping key for an object\n   */\n  getGroupingKey(obj, groupConfig) {\n    if (typeof groupConfig === 'string') {\n      return getNestedValue(obj, groupConfig);\n    }\n    \n    if (groupConfig.key) {\n      if (typeof groupConfig.key === 'function') {\n        return groupConfig.key(obj);\n      }\n      return getNestedValue(obj, groupConfig.key);\n    }\n    \n    if (groupConfig.keys) {\n      const keyObj = {};\n      groupConfig.keys.forEach(key => {\n        keyObj[key] = getNestedValue(obj, key);\n      });\n      return JSON.stringify(keyObj);\n    }\n    \n    throw new Error('Invalid grouping configuration');\n  }\n  \n  /**\n   * Parse grouping key back to readable format\n   */\n  parseGroupingKey(key, groupConfig) {\n    if (typeof groupConfig === 'string' || \n        (groupConfig.key && typeof groupConfig.key !== 'function')) {\n      return key;\n    }\n    \n    if (groupConfig.keys) {\n      try {\n        return JSON.parse(key);\n      } catch {\n        return key;\n      }\n    }\n    \n    return key;\n  }\n  \n  /**\n   * Apply filtering before aggregation\n   */\n  filter(filterFn) {\n    this.objects = this.objects.filter(filterFn);\n    this.clearCache();\n    return this;\n  }\n  \n  /**\n   * Sort results by specified criteria\n   */\n  sort(sortConfig) {\n    if (!this.results) {\n      throw new Error('No results to sort. Call groupBy() first.');\n    }\n    \n    this.results = this.sortResults(this.results, sortConfig);\n    return this;\n  }\n  \n  /**\n   * Sort results recursively\n   */\n  sortResults(results, sortConfig) {\n    const sorted = [...results].sort((a, b) => {\n      if (typeof sortConfig === 'string') {\n        const aVal = a[sortConfig];\n        const bVal = b[sortConfig];\n        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;\n      }\n      \n      if (typeof sortConfig === 'function') {\n        return sortConfig(a, b);\n      }\n      \n      if (sortConfig.property) {\n        const { property, direction = 'asc' } = sortConfig;\n        const aVal = a[property];\n        const bVal = b[property];\n        \n        let comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;\n        return direction === 'desc' ? -comparison : comparison;\n      }\n      \n      return 0;\n    });\n    \n    // Sort subgroups recursively\n    return sorted.map(group => {\n      if (group.subgroups) {\n        return {\n          ...group,\n          subgroups: this.sortResults(group.subgroups, sortConfig)\n        };\n      }\n      return group;\n    });\n  }\n  \n  /**\n   * Limit results\n   */\n  limit(count) {\n    if (!this.results) {\n      throw new Error('No results to limit. Call groupBy() first.');\n    }\n    \n    this.results = this.results.slice(0, count);\n    return this;\n  }\n  \n  /**\n   * Get final results\n   */\n  getResults() {\n    return this.results || [];\n  }\n  \n  /**\n   * Get flattened results (all levels combined)\n   */\n  getFlatResults() {\n    if (!this.results) return [];\n    \n    const flattened = [];\n    \n    const flatten = (groups, parentKey = '') => {\n      groups.forEach(group => {\n        const currentKey = parentKey \n          ? `${parentKey}.${JSON.stringify(group.key)}`\n          : JSON.stringify(group.key);\n          \n        flattened.push({\n          ...group,\n          fullKey: currentKey\n        });\n        \n        if (group.subgroups) {\n          flatten(group.subgroups, currentKey);\n        }\n      });\n    };\n    \n    flatten(this.results);\n    return flattened;\n  }\n  \n  /**\n   * Get summary statistics\n   */\n  getSummary() {\n    if (!this.results) return null;\n    \n    const summary = {\n      totalGroups: 0,\n      totalItems: this.objects.length,\n      levels: 0,\n      groupSizes: []\n    };\n    \n    const analyze = (groups, level = 0) => {\n      summary.levels = Math.max(summary.levels, level + 1);\n      \n      groups.forEach(group => {\n        summary.totalGroups++;\n        summary.groupSizes.push(group.count);\n        \n        if (group.subgroups) {\n          analyze(group.subgroups, level + 1);\n        }\n      });\n    };\n    \n    analyze(this.results);\n    \n    // Calculate group size statistics\n    if (summary.groupSizes.length > 0) {\n      summary.avgGroupSize = summary.groupSizes.reduce((a, b) => a + b, 0) / summary.groupSizes.length;\n      summary.minGroupSize = Math.min(...summary.groupSizes);\n      summary.maxGroupSize = Math.max(...summary.groupSizes);\n    }\n    \n    return summary;\n  }\n  \n  /**\n   * Clear caches\n   */\n  clearCache() {\n    this.groupingCache.clear();\n    this.results = null;\n  }\n}\n\n// =======================\n// Approach 3: Specialized Aggregations\n// =======================\n\n/**\n * Specialized aggregation functions for common use cases\n */\nconst SpecializedAggregations = {\n  /**\n   * Time-based aggregation (by hour, day, month, etc.)\n   */\n  timeBasedAggregation(objects, dateProperty, interval = 'day', aggregations = {}) {\n    const grouped = new Map();\n    \n    objects.forEach(obj => {\n      const date = new Date(getNestedValue(obj, dateProperty));\n      if (isNaN(date.getTime())) return;\n      \n      const key = this.getTimeIntervalKey(date, interval);\n      \n      if (!grouped.has(key)) {\n        grouped.set(key, []);\n      }\n      \n      grouped.get(key).push(obj);\n    });\n    \n    const results = [];\n    \n    for (const [timeKey, groupObjects] of grouped) {\n      const result = {\n        timeInterval: timeKey,\n        count: groupObjects.length,\n        items: groupObjects\n      };\n      \n      // Apply aggregations\n      for (const [aggName, aggConfig] of Object.entries(aggregations)) {\n        result[aggName] = calculateAggregation(groupObjects, aggConfig);\n      }\n      \n      results.push(result);\n    }\n    \n    return results.sort((a, b) => a.timeInterval.localeCompare(b.timeInterval));\n  },\n  \n  /**\n   * Get time interval key\n   */\n  getTimeIntervalKey(date, interval) {\n    switch (interval) {\n      case 'hour':\n        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;\n      \n      case 'day':\n        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;\n      \n      case 'week':\n        const startOfWeek = new Date(date);\n        startOfWeek.setDate(date.getDate() - date.getDay());\n        return `${startOfWeek.getFullYear()}-W${String(Math.ceil((startOfWeek - new Date(startOfWeek.getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000))).padStart(2, '0')}`;\n      \n      case 'month':\n        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;\n      \n      case 'year':\n        return `${date.getFullYear()}`;\n      \n      default:\n        throw new Error(`Unknown time interval: ${interval}`);\n    }\n  },\n  \n  /**\n   * Range-based aggregation (for numeric values)\n   */\n  rangeAggregation(objects, property, ranges, aggregations = {}) {\n    const grouped = new Map();\n    \n    objects.forEach(obj => {\n      const value = getNestedValue(obj, property);\n      if (typeof value !== 'number') return;\n      \n      const range = ranges.find(r => value >= r.min && value <= r.max);\n      if (!range) return;\n      \n      const key = `${range.min}-${range.max}`;\n      \n      if (!grouped.has(key)) {\n        grouped.set(key, { range, objects: [] });\n      }\n      \n      grouped.get(key).objects.push(obj);\n    });\n    \n    const results = [];\n    \n    for (const [rangeKey, { range, objects: groupObjects }] of grouped) {\n      const result = {\n        range,\n        rangeKey,\n        count: groupObjects.length,\n        items: groupObjects\n      };\n      \n      // Apply aggregations\n      for (const [aggName, aggConfig] of Object.entries(aggregations)) {\n        result[aggName] = calculateAggregation(groupObjects, aggConfig);\n      }\n      \n      results.push(result);\n    }\n    \n    return results;\n  },\n  \n  /**\n   * Percentile-based aggregation\n   */\n  percentileAggregation(objects, property, percentiles = [25, 50, 75, 90, 95]) {\n    const values = objects.map(obj => getNestedValue(obj, property))\n                          .filter(val => typeof val === 'number' && !isNaN(val))\n                          .sort((a, b) => a - b);\n                          \n    if (values.length === 0) {\n      return { error: 'No numeric values found' };\n    }\n    \n    const result = {\n      totalValues: values.length,\n      min: values[0],\n      max: values[values.length - 1],\n      percentiles: {}\n    };\n    \n    percentiles.forEach(p => {\n      const index = Math.ceil((p / 100) * values.length) - 1;\n      result.percentiles[`p${p}`] = values[Math.max(0, index)];\n    });\n    \n    return result;\n  }\n};\n\n// =======================\n// Real-world Examples\n// =======================\n\n// Example: Sales data analysis\nfunction analyzeSalesData(sales) {\n  const engine = new AggregationEngine(sales);\n  \n  return engine\n    .filter(sale => sale.amount > 0) // Filter valid sales\n    .groupBy([\n      {\n        key: 'region',\n        aggregations: {\n          totalRevenue: { property: 'amount', operation: 'sum' },\n          avgOrderValue: { property: 'amount', operation: 'avg' },\n          totalOrders: { property: 'amount', operation: 'count' }\n        }\n      },\n      {\n        key: 'category',\n        aggregations: {\n          categoryRevenue: { property: 'amount', operation: 'sum' },\n          topProduct: (objects) => {\n            const productCounts = new Map();\n            objects.forEach(obj => {\n              productCounts.set(obj.product, (productCounts.get(obj.product) || 0) + 1);\n            });\n            \n            let maxCount = 0;\n            let topProduct = null;\n            for (const [product, count] of productCounts) {\n              if (count > maxCount) {\n                maxCount = count;\n                topProduct = product;\n              }\n            }\n            return topProduct;\n          }\n        }\n      }\n    ])\n    .sort({ property: 'totalRevenue', direction: 'desc' })\n    .getResults();\n}\n\n// Example: User activity analysis\nfunction analyzeUserActivity(activities) {\n  // Time-based analysis\n  const hourlyActivity = SpecializedAggregations.timeBasedAggregation(\n    activities,\n    'timestamp',\n    'hour',\n    {\n      uniqueUsers: (objects) => {\n        const uniqueUserIds = new Set(objects.map(obj => obj.userId));\n        return uniqueUserIds.size;\n      },\n      totalDuration: { property: 'duration', operation: 'sum' }\n    }\n  );\n  \n  // Range-based analysis for session duration\n  const durationRanges = [\n    { min: 0, max: 60, label: 'Quick (0-1 min)' },\n    { min: 61, max: 300, label: 'Short (1-5 min)' },\n    { min: 301, max: 1800, label: 'Medium (5-30 min)' },\n    { min: 1801, max: Infinity, label: 'Long (30+ min)' }\n  ];\n  \n  const sessionAnalysis = SpecializedAggregations.rangeAggregation(\n    activities,\n    'duration',\n    durationRanges,\n    {\n      avgDuration: { property: 'duration', operation: 'avg' },\n      uniqueUsers: (objects) => new Set(objects.map(obj => obj.userId)).size\n    }\n  );\n  \n  return {\n    hourlyActivity,\n    sessionAnalysis\n  };\n}\n\n// Export for use in other modules\nmodule.exports = {\n  aggregateObjects,\n  AggregationEngine,\n  SpecializedAggregations,\n  calculateAggregation,\n  getNestedValue,\n  analyzeSalesData,\n  analyzeUserActivity\n};
+  if (!groupBy) {
+    throw new Error('GroupBy key(s) must be specified');
+  }
+  
+  const grouped = new Map();
+  
+  // Group objects by key(s)
+  objects.forEach(obj => {
+    const key = generateGroupKey(obj, groupBy);
+    
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    
+    grouped.get(key).push(obj);
+  });
+  
+  // Apply aggregations to each group
+  const results = [];
+  
+  for (const [groupKey, groupObjects] of grouped) {
+    const result = {
+      groupKey: parseGroupKey(groupKey, groupBy),
+      count: groupObjects.length,
+      items: groupObjects
+    };
+    
+    // Apply each aggregation
+    for (const [aggName, aggConfig] of Object.entries(aggregations)) {
+      result[aggName] = calculateAggregation(groupObjects, aggConfig, defaultValue);
+    }
+    
+    results.push(result);
+  }
+  
+  return results;
+}
+
+/**
+ * Generate consistent group key from object and groupBy configuration
+ */
+function generateGroupKey(obj, groupBy) {
+  if (typeof groupBy === 'string') {
+    const value = getNestedValue(obj, groupBy);
+    return JSON.stringify({ [groupBy]: value });
+  }
+  
+  if (Array.isArray(groupBy)) {
+    const keyObj = {};
+    groupBy.forEach(key => {
+      keyObj[key] = getNestedValue(obj, key);
+    });
+    return JSON.stringify(keyObj);
+  }
+  
+  if (typeof groupBy === 'object') {
+    const keyObj = {};
+    for (const [alias, path] of Object.entries(groupBy)) {
+      keyObj[alias] = getNestedValue(obj, path);
+    }
+    return JSON.stringify(keyObj);
+  }
+  
+  throw new Error('Invalid groupBy configuration');
+}
+
+/**
+ * Parse group key back to readable format
+ */
+function parseGroupKey(keyString, groupBy) {
+  try {
+    const parsed = JSON.parse(keyString);
+    
+    if (typeof groupBy === 'string') {
+      return parsed[groupBy];
+    }
+    
+    return parsed;
+  } catch (error) {
+    return keyString;
+  }
+}
+
+/**
+ * Get nested property value
+ */
+function getNestedValue(obj, path) {
+  if (!obj || typeof obj !== 'object') return undefined;
+  
+  return path.split('.').reduce((current, key) => {
+    return current && current[key] !== undefined ? current[key] : undefined;
+  }, obj);
+}
+
+/**
+ * Calculate aggregation for a group of objects
+ */
+function calculateAggregation(objects, aggConfig, defaultValue) {
+  if (typeof aggConfig === 'string') {
+    // Simple property aggregation
+    const values = objects.map(obj => getNestedValue(obj, aggConfig))
+                          .filter(val => val !== undefined && val !== null);
+                          
+    return values.length > 0 ? values : defaultValue;
+  }
+  
+  if (typeof aggConfig === 'function') {
+    // Custom aggregation function
+    return aggConfig(objects);
+  }
+  
+  if (typeof aggConfig === 'object' && aggConfig !== null) {
+    const { property, operation, defaultValue: aggDefault } = aggConfig;
+    const values = objects.map(obj => getNestedValue(obj, property))
+                          .filter(val => typeof val === 'number' && !isNaN(val));
+    
+    if (values.length === 0) {
+      return aggDefault !== undefined ? aggDefault : defaultValue;
+    }
+    
+    switch (operation) {
+      case 'sum': return values.reduce((sum, val) => sum + val, 0);
+      case 'avg': return values.reduce((sum, val) => sum + val, 0) / values.length;
+      case 'min': return Math.min(...values);
+      case 'max': return Math.max(...values);
+      case 'count': return values.length;
+      case 'median': return calculateMedian(values);
+      case 'mode': return calculateMode(values);
+      case 'std': return calculateStandardDeviation(values);
+      default: throw new Error(`Unknown aggregation operation: ${operation}`);
+    }
+  }
+  
+  throw new Error('Invalid aggregation configuration');
+}
+
+/**
+ * Calculate median value
+ */
+function calculateMedian(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  
+  return sorted.length % 2 !== 0
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Calculate mode (most frequent value)
+ */
+function calculateMode(values) {
+  const frequency = new Map();
+  
+  values.forEach(val => {
+    frequency.set(val, (frequency.get(val) || 0) + 1);
+  });
+  
+  let maxFreq = 0;
+  let mode = null;
+  
+  for (const [value, freq] of frequency) {
+    if (freq > maxFreq) {
+      maxFreq = freq;
+      mode = value;
+    }
+  }
+  
+  return mode;
+}
+
+/**
+ * Calculate standard deviation
+ */
+function calculateStandardDeviation(values) {
+  const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+  const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
+  const avgSquaredDiff = squaredDiffs.reduce((sum, val) => sum + val, 0) / values.length;
+  
+  return Math.sqrt(avgSquaredDiff);
+}
+
+// =======================
+// Approach 2: Advanced Aggregation Engine
+// =======================
+
+/**
+ * Advanced aggregation engine with multiple grouping levels and optimizations
+ */
+class AggregationEngine {
+  constructor(objects = []) {
+    this.objects = objects;
+    this.results = null;
+    this.groupingCache = new Map();
+  }
+  
+  /**
+   * Set data source
+   */
+  setData(objects) {
+    this.objects = objects;
+    this.clearCache();
+    return this;
+  }
+  
+  /**
+   * Add data incrementally
+   */
+  addData(newObjects) {
+    if (!Array.isArray(newObjects)) {
+      newObjects = [newObjects];
+    }
+    
+    this.objects.push(...newObjects);
+    this.clearCache();
+    return this;
+  }
+  
+  /**
+   * Multi-level grouping and aggregation
+   */
+  groupBy(groupingLevels) {
+    if (!Array.isArray(groupingLevels)) {
+      groupingLevels = [groupingLevels];
+    }
+    
+    this.results = this.performMultiLevelGrouping(this.objects, groupingLevels, 0);
+    return this;
+  }
+  
+  /**
+   * Perform multi-level recursive grouping
+   */
+  performMultiLevelGrouping(objects, groupingLevels, level) {
+    if (level >= groupingLevels.length) {
+      return objects;
+    }
+    
+    const currentLevel = groupingLevels[level];
+    const grouped = new Map();
+    
+    // Group by current level
+    objects.forEach(obj => {
+      const key = this.getGroupingKey(obj, currentLevel);
+      
+      if (!grouped.has(key)) {
+        grouped.set(key, [];
+      }
+      
+      grouped.get(key).push(obj);
+    });
+    
+    // Process each group
+    const results = [];
+    
+    for (const [groupKey, groupObjects] of grouped) {
+      const groupResult = {
+        level: level,
+        key: this.parseGroupingKey(groupKey, currentLevel),
+        count: groupObjects.length
+      };
+      
+      // Apply aggregations for current level
+      if (currentLevel.aggregations) {
+        for (const [aggName, aggConfig] of Object.entries(currentLevel.aggregations)) {
+          groupResult[aggName] = calculateAggregation(groupObjects, aggConfig);
+        }
+      }
+      
+      // Recurse to next level if exists
+      if (level + 1 < groupingLevels.length) {
+        groupResult.subgroups = this.performMultiLevelGrouping(
+          groupObjects,
+          groupingLevels,
+          level + 1
+        );
+      } else {
+        groupResult.items = groupObjects;
+      }
+      
+      results.push(groupResult);
+    }
+    
+    return results;
+  }
+  
+  /**
+   * Get grouping key for an object
+   */
+  getGroupingKey(obj, groupConfig) {
+    if (typeof groupConfig === 'string') {
+      return getNestedValue(obj, groupConfig);
+    }
+    
+    if (groupConfig.key) {
+      if (typeof groupConfig.key === 'function') {
+        return groupConfig.key(obj);
+      }
+      return getNestedValue(obj, groupConfig.key);
+    }
+    
+    if (groupConfig.keys) {
+      const keyObj = {};
+      groupConfig.keys.forEach(key => {
+        keyObj[key] = getNestedValue(obj, key);
+      });
+      return JSON.stringify(keyObj);
+    }
+    
+    throw new Error('Invalid grouping configuration');
+  }
+  
+  /**
+   * Parse grouping key back to readable format
+   */
+  parseGroupingKey(key, groupConfig) {
+    if (typeof groupConfig === 'string' || 
+        (groupConfig.key && typeof groupConfig.key !== 'function')) {
+      return key;
+    }
+    
+    if (groupConfig.keys) {
+      try {
+        return JSON.parse(key);
+      } catch {
+        return key;
+      }
+    }
+    
+    return key;
+  }
+  
+  /**
+   * Apply filtering before aggregation
+   */
+  filter(filterFn) {
+    this.objects = this.objects.filter(filterFn);
+    this.clearCache();
+    return this;
+  }
+  
+  /**
+   * Sort results by specified criteria
+   */
+  sort(sortConfig) {
+    if (!this.results) {
+      throw new Error('No results to sort. Call groupBy() first.');
+    }
+    
+    this.results = this.sortResults(this.results, sortConfig);
+    return this;
+  }
+  
+  /**
+   * Sort results recursively
+   */
+  sortResults(results, sortConfig) {
+    const sorted = [...results].sort((a, b) => {
+      if (typeof sortConfig === 'string') {
+        const aVal = a[sortConfig];
+        const bVal = b[sortConfig];
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      }
+      
+      if (typeof sortConfig === 'function') {
+        return sortConfig(a, b);
+      }
+      
+      if (sortConfig.property) {
+        const { property, direction = 'asc' } = sortConfig;
+        const aVal = a[property];
+        const bVal = b[property];
+        
+        let comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        return direction === 'desc' ? -comparison : comparison;
+      }
+      
+      return 0;
+    });
+    
+    // Sort subgroups recursively
+    return sorted.map(group => {
+      if (group.subgroups) {
+        return {
+          ...group,
+          subgroups: this.sortResults(group.subgroups, sortConfig)
+        };
+      }
+      return group;
+    });
+  }
+  
+  /**
+   * Limit results
+   */
+  limit(count) {
+    if (!this.results) {
+      throw new Error('No results to limit. Call groupBy() first.');
+    }
+    
+    this.results = this.results.slice(0, count);
+    return this;
+  }
+  
+  /**
+   * Get final results
+   */
+  getResults() {
+    return this.results || [];
+  }
+  
+  /**
+   * Get flattened results (all levels combined)
+   */
+  getFlatResults() {
+    if (!this.results) return [];
+    
+    const flattened = [];
+    
+    const flatten = (groups, parentKey = '') => {
+      groups.forEach(group => {
+        const currentKey = parentKey 
+          ? `${parentKey}.${JSON.stringify(group.key)}`
+          : JSON.stringify(group.key);
+          
+        flattened.push({
+          ...group,
+          fullKey: currentKey
+        });
+        
+        if (group.subgroups) {
+          flatten(group.subgroups, currentKey);
+        }
+      });
+    };
+    
+    flatten(this.results);
+    return flattened;
+  }
+  
+  /**
+   * Get summary statistics
+   */
+  getSummary() {
+    if (!this.results) return null;
+    
+    const summary = {
+      totalGroups: 0,
+      totalItems: this.objects.length,
+      levels: 0,
+      groupSizes: []
+    };
+    
+    const analyze = (groups, level = 0) => {
+      summary.levels = Math.max(summary.levels, level + 1);
+      
+      groups.forEach(group => {
+        summary.totalGroups++;
+        summary.groupSizes.push(group.count);
+        
+        if (group.subgroups) {
+          analyze(group.subgroups, level + 1);
+        }
+      });
+    };
+    
+    analyze(this.results);
+    
+    // Calculate group size statistics
+    if (summary.groupSizes.length > 0) {
+      summary.avgGroupSize = summary.groupSizes.reduce((a, b) => a + b, 0) / summary.groupSizes.length;
+      summary.minGroupSize = Math.min(...summary.groupSizes);
+      summary.maxGroupSize = Math.max(...summary.groupSizes);
+    }
+    
+    return summary;
+  }
+  
+  /**
+   * Clear caches
+   */
+  clearCache() {
+    this.groupingCache.clear();
+    this.results = null;
+  }
+}
+
+// =======================
+// Approach 3: Specialized Aggregations
+// =======================
+
+/**
+ * Specialized aggregation functions for common use cases
+ */
+const SpecializedAggregations = {
+  /**
+   * Time-based aggregation (by hour, day, month, etc.)
+   */
+  timeBasedAggregation(objects, dateProperty, interval = 'day', aggregations = {}) {
+    const grouped = new Map();
+    
+    objects.forEach(obj => {
+      const date = new Date(getNestedValue(obj, dateProperty));
+      if (isNaN(date.getTime())) return;
+      
+      const key = this.getTimeIntervalKey(date, interval);
+      
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      
+      grouped.get(key).push(obj);
+    });
+    
+    const results = [];
+    
+    for (const [timeKey, groupObjects] of grouped) {
+      const result = {
+        timeInterval: timeKey,
+        count: groupObjects.length,
+        items: groupObjects
+      };
+      
+      // Apply aggregations
+      for (const [aggName, aggConfig] of Object.entries(aggregations)) {
+        result[aggName] = calculateAggregation(groupObjects, aggConfig);
+      }
+      
+      results.push(result);
+    }
+    
+    return results.sort((a, b) => a.timeInterval.localeCompare(b.timeInterval));
+  },
+  
+  /**
+   * Get time interval key
+   */
+  getTimeIntervalKey(date, interval) {
+    switch (interval) {
+      case 'hour':
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
+      
+      case 'day':
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      
+      case 'week':
+        const startOfWeek = new Date(date);
+        startOfWeek.setDate(date.getDate() - date.getDay());
+        return `${startOfWeek.getFullYear()}-W${String(Math.ceil((startOfWeek - new Date(startOfWeek.getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000))).padStart(2, '0')}`;
+      
+      case 'month':
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      case 'year':
+        return `${date.getFullYear()}`;
+      
+      default:
+        throw new Error(`Unknown time interval: ${interval}`);
+    }
+  },
+  
+  /**
+   * Range-based aggregation (for numeric values)
+   */
+  rangeAggregation(objects, property, ranges, aggregations = {}) {
+    const grouped = new Map();
+    
+    objects.forEach(obj => {
+      const value = getNestedValue(obj, property);
+      if (typeof value !== 'number') return;
+      
+      const range = ranges.find(r => value >= r.min && value <= r.max);
+      if (!range) return;
+      
+      const key = `${range.min}-${range.max}`;
+      
+      if (!grouped.has(key)) {
+        grouped.set(key, { range, objects: [] });
+      }
+      
+      grouped.get(key).objects.push(obj);
+    });
+    
+    const results = [];
+    
+    for (const [rangeKey, { range, objects: groupObjects }] of grouped) {
+      const result = {
+        range,
+        rangeKey,
+        count: groupObjects.length,
+        items: groupObjects
+      };
+      
+      // Apply aggregations
+      for (const [aggName, aggConfig] of Object.entries(aggregations)) {
+        result[aggName] = calculateAggregation(groupObjects, aggConfig);
+      }
+      
+      results.push(result);
+    }
+    
+    return results;
+  },
+  
+  /**
+   * Percentile-based aggregation
+   */
+  percentileAggregation(objects, property, percentiles = [25, 50, 75, 90, 95]) {
+    const values = objects.map(obj => getNestedValue(obj, property))
+                          .filter(val => typeof val === 'number' && !isNaN(val))
+                          .sort((a, b) => a - b);
+                          
+    if (values.length === 0) {
+      return { error: 'No numeric values found' };
+    }
+    
+    const result = {
+      totalValues: values.length,
+      min: values[0],
+      max: values[values.length - 1],
+      percentiles: {}
+    };
+    
+    percentiles.forEach(p => {
+      const index = Math.ceil((p / 100) * values.length) - 1;
+      result.percentiles[`p${p}`] = values[Math.max(0, index)];
+    });
+    
+    return result;
+  }
+};
+
+// =======================
+// Real-world Examples
+// =======================
+
+// Example: Sales data analysis
+function analyzeSalesData(sales) {
+  const engine = new AggregationEngine(sales);
+  
+  return engine
+    .filter(sale => sale.amount > 0) // Filter valid sales
+    .groupBy([
+      {
+        key: 'region',
+        aggregations: {
+          totalRevenue: { property: 'amount', operation: 'sum' },
+          avgOrderValue: { property: 'amount', operation: 'avg' },
+          totalOrders: { property: 'amount', operation: 'count' }
+        }
+      },
+      {
+        key: 'category',
+        aggregations: {
+          categoryRevenue: { property: 'amount', operation: 'sum' },
+          topProduct: (objects) => {
+            const productCounts = new Map();
+            objects.forEach(obj => {
+              productCounts.set(obj.product, (productCounts.get(obj.product) || 0) + 1);
+            });
+            
+            let maxCount = 0;
+            let topProduct = null;
+            for (const [product, count] of productCounts) {
+              if (count > maxCount) {
+                maxCount = count;
+                topProduct = product;
+              }
+            }
+            return topProduct;
+          }
+        }
+      }
+    ])
+    .sort({ property: 'totalRevenue', direction: 'desc' })
+    .getResults();
+}
+
+// Example: User activity analysis
+function analyzeUserActivity(activities) {
+  // Time-based analysis
+  const hourlyActivity = SpecializedAggregations.timeBasedAggregation(
+    activities,
+    'timestamp',
+    'hour',
+    {
+      uniqueUsers: (objects) => {
+        const uniqueUserIds = new Set(objects.map(obj => obj.userId));
+        return uniqueUserIds.size;
+      },
+      totalDuration: { property: 'duration', operation: 'sum' }
+    }
+  );
+  
+  // Range-based analysis for session duration
+  const durationRanges = [
+    { min: 0, max: 60, label: 'Quick (0-1 min)' },
+    { min: 61, max: 300, label: 'Short (1-5 min)' },
+    { min: 301, max: 1800, label: 'Medium (5-30 min)' },
+    { min: 1801, max: Infinity, label: 'Long (30+ min)' }
+  ];
+  
+  const sessionAnalysis = SpecializedAggregations.rangeAggregation(
+    activities,
+    'duration',
+    durationRanges,
+    {
+      avgDuration: { property: 'duration', operation: 'avg' },
+      uniqueUsers: (objects) => new Set(objects.map(obj => obj.userId)).size
+    }
+  );
+  
+  return {
+    hourlyActivity,
+    sessionAnalysis
+  };
+}
+
+// Export for use in other modules
+module.exports = {
+  aggregateObjects,
+  AggregationEngine,
+  SpecializedAggregations,
+  calculateAggregation,
+  getNestedValue,
+  analyzeSalesData,
+  analyzeUserActivity
+};

@@ -28,4 +28,602 @@ class ExpiryLocalStorage {
     this.separator = '|';
   }
   
-  /**\n   * Set item with expiration\n   */\n  setItem(key, value, ttlMs = this.defaultTTL) {\n    try {\n      const expirationTime = Date.now() + ttlMs;\n      const data = {\n        value: value,\n        expiry: expirationTime,\n        created: Date.now(),\n        accessed: Date.now()\n      };\n      \n      const serializedData = JSON.stringify(data);\n      const prefixedKey = this.prefix + key;\n      \n      localStorage.setItem(prefixedKey, serializedData);\n      return true;\n    } catch (error) {\n      console.warn('Failed to store item:', error.message);\n      return false;\n    }\n  }\n  \n  /**\n   * Get item with expiration check\n   */\n  getItem(key, updateAccess = true) {\n    try {\n      const prefixedKey = this.prefix + key;\n      const serializedData = localStorage.getItem(prefixedKey);\n      \n      if (!serializedData) {\n        return null;\n      }\n      \n      const data = JSON.parse(serializedData);\n      \n      // Check if item has expired\n      if (Date.now() > data.expiry) {\n        this.removeItem(key);\n        return null;\n      }\n      \n      // Update access time if requested\n      if (updateAccess) {\n        data.accessed = Date.now();\n        localStorage.setItem(prefixedKey, JSON.stringify(data));\n      }\n      \n      return data.value;\n    } catch (error) {\n      console.warn('Failed to retrieve item:', error.message);\n      return null;\n    }\n  }\n  \n  /**\n   * Remove item\n   */\n  removeItem(key) {\n    try {\n      const prefixedKey = this.prefix + key;\n      localStorage.removeItem(prefixedKey);\n      return true;\n    } catch (error) {\n      console.warn('Failed to remove item:', error.message);\n      return false;\n    }\n  }\n  \n  /**\n   * Check if item exists and is not expired\n   */\n  hasItem(key) {\n    return this.getItem(key, false) !== null;\n  }\n  \n  /**\n   * Get item metadata without the value\n   */\n  getItemInfo(key) {\n    try {\n      const prefixedKey = this.prefix + key;\n      const serializedData = localStorage.getItem(prefixedKey);\n      \n      if (!serializedData) {\n        return null;\n      }\n      \n      const data = JSON.parse(serializedData);\n      \n      return {\n        created: data.created,\n        accessed: data.accessed,\n        expiry: data.expiry,\n        isExpired: Date.now() > data.expiry,\n        remainingTTL: Math.max(0, data.expiry - Date.now()),\n        size: serializedData.length\n      };\n    } catch (error) {\n      return null;\n    }\n  }\n  \n  /**\n   * Clean up expired items\n   */\n  cleanup() {\n    const removedCount = 0;\n    const keys = [];\n    \n    // Collect all keys with our prefix\n    for (let i = 0; i < localStorage.length; i++) {\n      const key = localStorage.key(i);\n      if (key && key.startsWith(this.prefix)) {\n        keys.push(key);\n      }\n    }\n    \n    // Check each key for expiration\n    let removed = 0;\n    keys.forEach(prefixedKey => {\n      try {\n        const serializedData = localStorage.getItem(prefixedKey);\n        if (serializedData) {\n          const data = JSON.parse(serializedData);\n          if (Date.now() > data.expiry) {\n            localStorage.removeItem(prefixedKey);\n            removed++;\n          }\n        }\n      } catch (error) {\n        // Remove corrupted entries\n        localStorage.removeItem(prefixedKey);\n        removed++;\n      }\n    });\n    \n    return removed;\n  }\n  \n  /**\n   * Get all non-expired keys\n   */\n  getAllKeys() {\n    const keys = [];\n    \n    for (let i = 0; i < localStorage.length; i++) {\n      const prefixedKey = localStorage.key(i);\n      if (prefixedKey && prefixedKey.startsWith(this.prefix)) {\n        const key = prefixedKey.substring(this.prefix.length);\n        if (this.hasItem(key)) {\n          keys.push(key);\n        }\n      }\n    }\n    \n    return keys;\n  }\n  \n  /**\n   * Clear all items with this prefix\n   */\n  clear() {\n    const keys = [];\n    \n    for (let i = 0; i < localStorage.length; i++) {\n      const key = localStorage.key(i);\n      if (key && key.startsWith(this.prefix)) {\n        keys.push(key);\n      }\n    }\n    \n    keys.forEach(key => localStorage.removeItem(key));\n    return keys.length;\n  }\n  \n  /**\n   * Get storage statistics\n   */\n  getStats() {\n    const stats = {\n      totalItems: 0,\n      expiredItems: 0,\n      totalSize: 0,\n      oldestItem: null,\n      newestItem: null,\n      mostAccessed: null\n    };\n    \n    let oldestTime = Date.now();\n    let newestTime = 0;\n    let maxAccesses = 0;\n    \n    for (let i = 0; i < localStorage.length; i++) {\n      const prefixedKey = localStorage.key(i);\n      if (prefixedKey && prefixedKey.startsWith(this.prefix)) {\n        try {\n          const serializedData = localStorage.getItem(prefixedKey);\n          const data = JSON.parse(serializedData);\n          const key = prefixedKey.substring(this.prefix.length);\n          \n          stats.totalItems++;\n          stats.totalSize += serializedData.length;\n          \n          if (Date.now() > data.expiry) {\n            stats.expiredItems++;\n          }\n          \n          if (data.created < oldestTime) {\n            oldestTime = data.created;\n            stats.oldestItem = key;\n          }\n          \n          if (data.created > newestTime) {\n            newestTime = data.created;\n            stats.newestItem = key;\n          }\n          \n          if (data.accessed > maxAccesses) {\n            maxAccesses = data.accessed;\n            stats.mostAccessed = key;\n          }\n        } catch (error) {\n          // Skip corrupted items\n        }\n      }\n    }\n    \n    return stats;\n  }\n}\n\n// =======================\n// Approach 2: Advanced Storage Manager\n// =======================\n\n/**\n * Advanced storage manager with multiple backends and features\n * Supports localStorage, sessionStorage, and memory fallback\n */\nclass AdvancedStorageManager {\n  constructor(options = {}) {\n    const {\n      prefix = 'asm_',\n      defaultTTL = 24 * 60 * 60 * 1000,\n      maxSize = 5 * 1024 * 1024, // 5MB\n      compressionThreshold = 1024, // Compress items > 1KB\n      backend = 'auto'\n    } = options;\n    \n    this.prefix = prefix;\n    this.defaultTTL = defaultTTL;\n    this.maxSize = maxSize;\n    this.compressionThreshold = compressionThreshold;\n    \n    // Determine storage backend\n    this.backend = this.initializeBackend(backend);\n    \n    // Statistics\n    this.stats = {\n      reads: 0,\n      writes: 0,\n      hits: 0,\n      misses: 0,\n      compressions: 0,\n      decompressions: 0\n    };\n    \n    // Auto cleanup interval\n    this.cleanupInterval = setInterval(() => {\n      this.cleanup();\n    }, 60000); // Every minute\n  }\n  \n  /**\n   * Initialize storage backend\n   */\n  initializeBackend(backend) {\n    const backends = {\n      localStorage: typeof localStorage !== 'undefined' ? localStorage : null,\n      sessionStorage: typeof sessionStorage !== 'undefined' ? sessionStorage : null,\n      memory: new Map()\n    };\n    \n    if (backend === 'auto') {\n      // Try localStorage first, then sessionStorage, then memory\n      return backends.localStorage || backends.sessionStorage || backends.memory;\n    }\n    \n    return backends[backend] || backends.memory;\n  }\n  \n  /**\n   * Set item with advanced features\n   */\n  async setItem(key, value, options = {}) {\n    const {\n      ttl = this.defaultTTL,\n      compress = null,\n      encrypt = false,\n      tags = []\n    } = options;\n    \n    try {\n      this.stats.writes++;\n      \n      let serializedValue = JSON.stringify(value);\n      \n      // Compression\n      const shouldCompress = compress !== null \n        ? compress \n        : serializedValue.length > this.compressionThreshold;\n      \n      if (shouldCompress && typeof pako !== 'undefined') {\n        serializedValue = pako.deflate(serializedValue, { to: 'string' });\n        this.stats.compressions++;\n      }\n      \n      // Encryption (placeholder for actual encryption)\n      if (encrypt) {\n        serializedValue = this.simpleEncrypt(serializedValue);\n      }\n      \n      const data = {\n        value: serializedValue,\n        expiry: Date.now() + ttl,\n        created: Date.now(),\n        accessed: Date.now(),\n        compressed: shouldCompress,\n        encrypted: encrypt,\n        tags,\n        size: serializedValue.length\n      };\n      \n      const finalData = JSON.stringify(data);\n      const prefixedKey = this.prefix + key;\n      \n      // Check size limits\n      if (this.getCurrentSize() + finalData.length > this.maxSize) {\n        this.evictLRU(finalData.length);\n      }\n      \n      if (this.backend instanceof Map) {\n        this.backend.set(prefixedKey, finalData);\n      } else {\n        this.backend.setItem(prefixedKey, finalData);\n      }\n      \n      return true;\n    } catch (error) {\n      console.warn('Storage setItem failed:', error.message);\n      return false;\n    }\n  }\n  \n  /**\n   * Get item with advanced features\n   */\n  async getItem(key, updateAccess = true) {\n    try {\n      this.stats.reads++;\n      \n      const prefixedKey = this.prefix + key;\n      let serializedData;\n      \n      if (this.backend instanceof Map) {\n        serializedData = this.backend.get(prefixedKey);\n      } else {\n        serializedData = this.backend.getItem(prefixedKey);\n      }\n      \n      if (!serializedData) {\n        this.stats.misses++;\n        return null;\n      }\n      \n      const data = JSON.parse(serializedData);\n      \n      // Check expiration\n      if (Date.now() > data.expiry) {\n        this.removeItem(key);\n        this.stats.misses++;\n        return null;\n      }\n      \n      this.stats.hits++;\n      \n      // Update access time\n      if (updateAccess) {\n        data.accessed = Date.now();\n        const updatedData = JSON.stringify(data);\n        \n        if (this.backend instanceof Map) {\n          this.backend.set(prefixedKey, updatedData);\n        } else {\n          this.backend.setItem(prefixedKey, updatedData);\n        }\n      }\n      \n      let value = data.value;\n      \n      // Decryption\n      if (data.encrypted) {\n        value = this.simpleDecrypt(value);\n      }\n      \n      // Decompression\n      if (data.compressed && typeof pako !== 'undefined') {\n        value = pako.inflate(value, { to: 'string' });\n        this.stats.decompressions++;\n      }\n      \n      return JSON.parse(value);\n    } catch (error) {\n      console.warn('Storage getItem failed:', error.message);\n      this.stats.misses++;\n      return null;\n    }\n  }\n  \n  /**\n   * Simple encryption (demo purposes - use proper crypto in production)\n   */\n  simpleEncrypt(text) {\n    return btoa(text); // Simple base64 encoding\n  }\n  \n  simpleDecrypt(encrypted) {\n    return atob(encrypted); // Simple base64 decoding\n  }\n  \n  /**\n   * Get current storage size\n   */\n  getCurrentSize() {\n    let size = 0;\n    \n    if (this.backend instanceof Map) {\n      for (const [key, value] of this.backend) {\n        if (key.startsWith(this.prefix)) {\n          size += key.length + value.length;\n        }\n      }\n    } else {\n      for (let i = 0; i < this.backend.length; i++) {\n        const key = this.backend.key(i);\n        if (key && key.startsWith(this.prefix)) {\n          const value = this.backend.getItem(key);\n          size += key.length + (value ? value.length : 0);\n        }\n      }\n    }\n    \n    return size;\n  }\n  \n  /**\n   * Evict least recently used items\n   */\n  evictLRU(neededSpace) {\n    const items = [];\n    \n    // Collect all items with access times\n    if (this.backend instanceof Map) {\n      for (const [prefixedKey, serializedData] of this.backend) {\n        if (prefixedKey.startsWith(this.prefix)) {\n          try {\n            const data = JSON.parse(serializedData);\n            items.push({\n              key: prefixedKey,\n              accessed: data.accessed,\n              size: serializedData.length\n            });\n          } catch (error) {\n            // Remove corrupted items\n            this.backend.delete(prefixedKey);\n          }\n        }\n      }\n    } else {\n      for (let i = 0; i < this.backend.length; i++) {\n        const prefixedKey = this.backend.key(i);\n        if (prefixedKey && prefixedKey.startsWith(this.prefix)) {\n          try {\n            const serializedData = this.backend.getItem(prefixedKey);\n            const data = JSON.parse(serializedData);\n            items.push({\n              key: prefixedKey,\n              accessed: data.accessed,\n              size: serializedData.length\n            });\n          } catch (error) {\n            // Remove corrupted items\n            this.backend.removeItem(prefixedKey);\n          }\n        }\n      }\n    }\n    \n    // Sort by access time (oldest first)\n    items.sort((a, b) => a.accessed - b.accessed);\n    \n    // Remove items until we have enough space\n    let freedSpace = 0;\n    for (const item of items) {\n      if (freedSpace >= neededSpace) break;\n      \n      if (this.backend instanceof Map) {\n        this.backend.delete(item.key);\n      } else {\n        this.backend.removeItem(item.key);\n      }\n      \n      freedSpace += item.size;\n    }\n  }\n  \n  /**\n   * Find items by tags\n   */\n  findByTag(tag) {\n    const results = [];\n    \n    const keys = this.getAllKeys();\n    for (const key of keys) {\n      const info = this.getItemInfo(key);\n      if (info && info.tags && info.tags.includes(tag)) {\n        results.push(key);\n      }\n    }\n    \n    return results;\n  }\n  \n  /**\n   * Get all keys\n   */\n  getAllKeys() {\n    const keys = [];\n    \n    if (this.backend instanceof Map) {\n      for (const prefixedKey of this.backend.keys()) {\n        if (prefixedKey.startsWith(this.prefix)) {\n          const key = prefixedKey.substring(this.prefix.length);\n          keys.push(key);\n        }\n      }\n    } else {\n      for (let i = 0; i < this.backend.length; i++) {\n        const prefixedKey = this.backend.key(i);\n        if (prefixedKey && prefixedKey.startsWith(this.prefix)) {\n          const key = prefixedKey.substring(this.prefix.length);\n          keys.push(key);\n        }\n      }\n    }\n    \n    return keys;\n  }\n  \n  /**\n   * Get comprehensive statistics\n   */\n  getComprehensiveStats() {\n    return {\n      performance: { ...this.stats },\n      storage: {\n        currentSize: this.getCurrentSize(),\n        maxSize: this.maxSize,\n        utilization: (this.getCurrentSize() / this.maxSize * 100).toFixed(2) + '%',\n        itemCount: this.getAllKeys().length\n      },\n      backend: this.backend instanceof Map ? 'memory' : 'localStorage/sessionStorage'\n    };\n  }\n  \n  /**\n   * Cleanup and destroy\n   */\n  destroy() {\n    if (this.cleanupInterval) {\n      clearInterval(this.cleanupInterval);\n    }\n  }\n}\n\n// Create default instances\nconst expiryStorage = new ExpiryLocalStorage();\nconst advancedStorage = new AdvancedStorageManager();\n\n// Export for use in other modules\nmodule.exports = {\n  ExpiryLocalStorage,\n  AdvancedStorageManager,\n  expiryStorage,\n  advancedStorage\n};
+  /**
+   * Set item with expiration
+   */
+  setItem(key, value, ttlMs = this.defaultTTL) {
+    try {
+      const expirationTime = Date.now() + ttlMs;
+      const data = {
+        value: value,
+        expiry: expirationTime,
+        created: Date.now(),
+        accessed: Date.now()
+      };
+      
+      const serializedData = JSON.stringify(data);
+      const prefixedKey = this.prefix + key;
+      
+      localStorage.setItem(prefixedKey, serializedData);
+      return true;
+    } catch (error) {
+      console.warn('Failed to store item:', error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * Get item with expiration check
+   */
+  getItem(key, updateAccess = true) {
+    try {
+      const prefixedKey = this.prefix + key;
+      const serializedData = localStorage.getItem(prefixedKey);
+      
+      if (!serializedData) {
+        return null;
+      }
+      
+      const data = JSON.parse(serializedData);
+      
+      // Check if item has expired
+      if (Date.now() > data.expiry) {
+        this.removeItem(key);
+        return null;
+      }
+      
+      // Update access time if requested
+      if (updateAccess) {
+        data.accessed = Date.now();
+        localStorage.setItem(prefixedKey, JSON.stringify(data));
+      }
+      
+      return data.value;
+    } catch (error) {
+      console.warn('Failed to retrieve item:', error.message);
+      return null;
+    }
+  }
+  
+  /**
+   * Remove item
+   */
+  removeItem(key) {
+    try {
+      const prefixedKey = this.prefix + key;
+      localStorage.removeItem(prefixedKey);
+      return true;
+    } catch (error) {
+      console.warn('Failed to remove item:', error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * Check if item exists and is not expired
+   */
+  hasItem(key) {
+    return this.getItem(key, false) !== null;
+  }
+  
+  /**
+   * Get item metadata without the value
+   */
+  getItemInfo(key) {
+    try {
+      const prefixedKey = this.prefix + key;
+      const serializedData = localStorage.getItem(prefixedKey);
+      
+      if (!serializedData) {
+        return null;
+      }
+      
+      const data = JSON.parse(serializedData);
+      
+      return {
+        created: data.created,
+        accessed: data.accessed,
+        expiry: data.expiry,
+        isExpired: Date.now() > data.expiry,
+        remainingTTL: Math.max(0, data.expiry - Date.now()),
+        size: serializedData.length
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+  
+  /**
+   * Clean up expired items
+   */
+  cleanup() {
+    const removedCount = 0;
+    const keys = [];
+    
+    // Collect all keys with our prefix
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(this.prefix)) {
+        keys.push(key);
+      }
+    }
+    
+    // Check each key for expiration
+    let removed = 0;
+    keys.forEach(prefixedKey => {
+      try {
+        const serializedData = localStorage.getItem(prefixedKey);
+        if (serializedData) {
+          const data = JSON.parse(serializedData);
+          if (Date.now() > data.expiry) {
+            localStorage.removeItem(prefixedKey);
+            removed++;
+          }
+        }
+      } catch (error) {
+        // Remove corrupted entries
+        localStorage.removeItem(prefixedKey);
+        removed++;
+      }
+    });
+    
+    return removed;
+  }
+  
+  /**
+   * Get all non-expired keys
+   */
+  getAllKeys() {
+    const keys = [];
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const prefixedKey = localStorage.key(i);
+      if (prefixedKey && prefixedKey.startsWith(this.prefix)) {
+        const key = prefixedKey.substring(this.prefix.length);
+        if (this.hasItem(key)) {
+          keys.push(key);
+        }
+      }
+    }
+    
+    return keys;
+  }
+  
+  /**
+   * Clear all items with this prefix
+   */
+  clear() {
+    const keys = [];
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(this.prefix)) {
+        keys.push(key);
+      }
+    }
+    
+    keys.forEach(key => localStorage.removeItem(key));
+    return keys.length;
+  }
+  
+  /**
+   * Get storage statistics
+   */
+  getStats() {
+    const stats = {
+      totalItems: 0,
+      expiredItems: 0,
+      totalSize: 0,
+      oldestItem: null,
+      newestItem: null,
+      mostAccessed: null
+    };
+    
+    let oldestTime = Date.now();
+    let newestTime = 0;
+    let maxAccesses = 0;
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const prefixedKey = localStorage.key(i);
+      if (prefixedKey && prefixedKey.startsWith(this.prefix)) {
+        try {
+          const serializedData = localStorage.getItem(prefixedKey);
+          const data = JSON.parse(serializedData);
+          const key = prefixedKey.substring(this.prefix.length);
+          
+          stats.totalItems++;
+          stats.totalSize += serializedData.length;
+          
+          if (Date.now() > data.expiry) {
+            stats.expiredItems++;
+          }
+          
+          if (data.created < oldestTime) {
+            oldestTime = data.created;
+            stats.oldestItem = key;
+          }
+          
+          if (data.created > newestTime) {
+            newestTime = data.created;
+            stats.newestItem = key;
+          }
+          
+          if (data.accessed > maxAccesses) {
+            maxAccesses = data.accessed;
+            stats.mostAccessed = key;
+          }
+        } catch (error) {
+          // Skip corrupted items
+        }
+      }
+    }
+    
+    return stats;
+  }
+}
+
+// =======================
+// Approach 2: Advanced Storage Manager
+// =======================
+
+/**
+ * Advanced storage manager with multiple backends and features
+ * Supports localStorage, sessionStorage, and memory fallback
+ */
+class AdvancedStorageManager {
+  constructor(options = {}) {
+    const {
+      prefix = 'asm_',
+      defaultTTL = 24 * 60 * 60 * 1000,
+      maxSize = 5 * 1024 * 1024, // 5MB
+      compressionThreshold = 1024, // Compress items > 1KB
+      backend = 'auto'
+    } = options;
+    
+    this.prefix = prefix;
+    this.defaultTTL = defaultTTL;
+    this.maxSize = maxSize;
+    this.compressionThreshold = compressionThreshold;
+    
+    // Determine storage backend
+    this.backend = this.initializeBackend(backend);
+    
+    // Statistics
+    this.stats = {
+      reads: 0,
+      writes: 0,
+      hits: 0,
+      misses: 0,
+      compressions: 0,
+      decompressions: 0
+    };
+    
+    // Auto cleanup interval
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 60000); // Every minute
+  }
+  
+  /**
+   * Initialize storage backend
+   */
+  initializeBackend(backend) {
+    const backends = {
+      localStorage: typeof localStorage !== 'undefined' ? localStorage : null,
+      sessionStorage: typeof sessionStorage !== 'undefined' ? sessionStorage : null,
+      memory: new Map()
+    };
+    
+    if (backend === 'auto') {
+      // Try localStorage first, then sessionStorage, then memory
+      return backends.localStorage || backends.sessionStorage || backends.memory;
+    }
+    
+    return backends[backend] || backends.memory;
+  }
+  
+  /**
+   * Set item with advanced features
+   */
+  async setItem(key, value, options = {}) {
+    const {
+      ttl = this.defaultTTL,
+      compress = null,
+      encrypt = false,
+      tags = []
+    } = options;
+    
+    try {
+      this.stats.writes++;
+      
+      let serializedValue = JSON.stringify(value);
+      
+      // Compression
+      const shouldCompress = compress !== null 
+        ? compress 
+        : serializedValue.length > this.compressionThreshold;
+      
+      if (shouldCompress && typeof pako !== 'undefined') {
+        serializedValue = pako.deflate(serializedValue, { to: 'string' });
+        this.stats.compressions++;
+      }
+      
+      // Encryption (placeholder for actual encryption)
+      if (encrypt) {
+        serializedValue = this.simpleEncrypt(serializedValue);
+      }
+      
+      const data = {
+        value: serializedValue,
+        expiry: Date.now() + ttl,
+        created: Date.now(),
+        accessed: Date.now(),
+        compressed: shouldCompress,
+        encrypted: encrypt,
+        tags,
+        size: serializedValue.length
+      };
+      
+      const finalData = JSON.stringify(data);
+      const prefixedKey = this.prefix + key;
+      
+      // Check size limits
+      if (this.getCurrentSize() + finalData.length > this.maxSize) {
+        this.evictLRU(finalData.length);
+      }
+      
+      if (this.backend instanceof Map) {
+        this.backend.set(prefixedKey, finalData);
+      } else {
+        this.backend.setItem(prefixedKey, finalData);
+      }
+      
+      return true;
+    } catch (error) {
+      console.warn('Storage setItem failed:', error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * Get item with advanced features
+   */
+  async getItem(key, updateAccess = true) {
+    try {
+      this.stats.reads++;
+      
+      const prefixedKey = this.prefix + key;
+      let serializedData;
+      
+      if (this.backend instanceof Map) {
+        serializedData = this.backend.get(prefixedKey);
+      } else {
+        serializedData = this.backend.getItem(prefixedKey);
+      }
+      
+      if (!serializedData) {
+        this.stats.misses++;
+        return null;
+      }
+      
+      const data = JSON.parse(serializedData);
+      
+      // Check expiration
+      if (Date.now() > data.expiry) {
+        this.removeItem(key);
+        this.stats.misses++;
+        return null;
+      }
+      
+      this.stats.hits++;
+      
+      // Update access time
+      if (updateAccess) {
+        data.accessed = Date.now();
+        const updatedData = JSON.stringify(data);
+        
+        if (this.backend instanceof Map) {
+          this.backend.set(prefixedKey, updatedData);
+        } else {
+          this.backend.setItem(prefixedKey, updatedData);
+        }
+      }
+      
+      let value = data.value;
+      
+      // Decryption
+      if (data.encrypted) {
+        value = this.simpleDecrypt(value);
+      }
+      
+      // Decompression
+      if (data.compressed && typeof pako !== 'undefined') {
+        value = pako.inflate(value, { to: 'string' });
+        this.stats.decompressions++;
+      }
+      
+      return JSON.parse(value);
+    } catch (error) {
+      console.warn('Storage getItem failed:', error.message);
+      this.stats.misses++;
+      return null;
+    }
+  }
+  
+  /**
+   * Simple encryption (demo purposes - use proper crypto in production)
+   */
+  simpleEncrypt(text) {
+    return btoa(text); // Simple base64 encoding
+  }
+  
+  simpleDecrypt(encrypted) {
+    return atob(encrypted); // Simple base64 decoding
+  }
+  
+  /**
+   * Get current storage size
+   */
+  getCurrentSize() {
+    let size = 0;
+    
+    if (this.backend instanceof Map) {
+      for (const [key, value] of this.backend) {
+        if (key.startsWith(this.prefix)) {
+          size += key.length + value.length;
+        }
+      }
+    } else {
+      for (let i = 0; i < this.backend.length; i++) {
+        const key = this.backend.key(i);
+        if (key && key.startsWith(this.prefix)) {
+          const value = this.backend.getItem(key);
+          size += key.length + (value ? value.length : 0);
+        }
+      }
+    }
+    
+    return size;
+  }
+  
+  /**
+   * Evict least recently used items
+   */
+  evictLRU(neededSpace) {
+    const items = [];
+    
+    // Collect all items with access times
+    if (this.backend instanceof Map) {
+      for (const [prefixedKey, serializedData] of this.backend) {
+        if (prefixedKey.startsWith(this.prefix)) {
+          try {
+            const data = JSON.parse(serializedData);
+            items.push({
+              key: prefixedKey,
+              accessed: data.accessed,
+              size: serializedData.length
+            });
+          } catch (error) {
+            // Remove corrupted items
+            this.backend.delete(prefixedKey);
+          }
+        }
+      }
+    } else {
+      for (let i = 0; i < this.backend.length; i++) {
+        const prefixedKey = this.backend.key(i);
+        if (prefixedKey && prefixedKey.startsWith(this.prefix)) {
+          try {
+            const serializedData = this.backend.getItem(prefixedKey);
+            const data = JSON.parse(serializedData);
+            items.push({
+              key: prefixedKey,
+              accessed: data.accessed,
+              size: serializedData.length
+            });
+          } catch (error) {
+            // Remove corrupted items
+            this.backend.removeItem(prefixedKey);
+          }
+        }
+      }
+    }
+    
+    // Sort by access time (oldest first)
+    items.sort((a, b) => a.accessed - b.accessed);
+    
+    // Remove items until we have enough space
+    let freedSpace = 0;
+    for (const item of items) {
+      if (freedSpace >= neededSpace) break;
+      
+      if (this.backend instanceof Map) {
+        this.backend.delete(item.key);
+      } else {
+        this.backend.removeItem(item.key);
+      }
+      
+      freedSpace += item.size;
+    }
+  }
+  
+  /**
+   * Find items by tags
+   */
+  findByTag(tag) {
+    const results = [];
+    
+    const keys = this.getAllKeys();
+    for (const key of keys) {
+      const info = this.getItemInfo(key);
+      if (info && info.tags && info.tags.includes(tag)) {
+        results.push(key);
+      }
+    }
+    
+    return results;
+  }
+  
+  /**
+   * Get all keys
+   */
+  getAllKeys() {
+    const keys = [];
+    
+    if (this.backend instanceof Map) {
+      for (const prefixedKey of this.backend.keys()) {
+        if (prefixedKey.startsWith(this.prefix)) {
+          const key = prefixedKey.substring(this.prefix.length);
+          keys.push(key);
+        }
+      }
+    } else {
+      for (let i = 0; i < this.backend.length; i++) {
+        const prefixedKey = this.backend.key(i);
+        if (prefixedKey && prefixedKey.startsWith(this.prefix)) {
+          const key = prefixedKey.substring(this.prefix.length);
+          keys.push(key);
+        }
+      }
+    }
+    
+    return keys;
+  }
+  
+  /**
+   * Get comprehensive statistics
+   */
+  getComprehensiveStats() {
+    return {
+      performance: { ...this.stats },
+      storage: {
+        currentSize: this.getCurrentSize(),
+        maxSize: this.maxSize,
+        utilization: (this.getCurrentSize() / this.maxSize * 100).toFixed(2) + '%',
+        itemCount: this.getAllKeys().length
+      },
+      backend: this.backend instanceof Map ? 'memory' : 'localStorage/sessionStorage'
+    };
+  }
+  
+  /**
+   * Cleanup and destroy
+   */
+  destroy() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+  }
+}
+
+// Create default instances
+const expiryStorage = new ExpiryLocalStorage();
+const advancedStorage = new AdvancedStorageManager();
+
+// Export for use in other modules
+module.exports = {
+  ExpiryLocalStorage,
+  AdvancedStorageManager,
+  expiryStorage,
+  advancedStorage
+};

@@ -1,12 +1,12 @@
 /**
  * File: custom-cookies.js
  * Description: Custom cookie management implementation with advanced features
- * 
+ *
  * Learning objectives:
  * - Understand HTTP cookie mechanics and browser storage
  * - Learn cookie parsing, serialization, and security features
  * - See cross-browser compatibility and edge case handling
- * 
+ *
  * Time Complexity: O(n) for parsing all cookies, O(1) for single operations
  * Space Complexity: O(n) where n is total cookie data size
  */
@@ -18,7 +18,656 @@
 /**
  * Basic cookie management class with core functionality
  * Handles setting, getting, and removing cookies with options
- * 
+ *
  * Mental model: Abstract cookie string manipulation into clean API
  */
-class CookieManager {\n  constructor(options = {}) {\n    this.defaults = {\n      path: '/',\n      domain: null,\n      secure: false,\n      sameSite: 'Lax',\n      httpOnly: false // Note: Can't be set via JavaScript\n    };\n    \n    // Merge with provided defaults\n    this.defaults = { ...this.defaults, ...options };\n  }\n  \n  /**\n   * Set a cookie with options\n   */\n  set(name, value, options = {}) {\n    if (typeof name !== 'string' || name.trim() === '') {\n      throw new Error('Cookie name must be a non-empty string');\n    }\n    \n    // Merge with defaults\n    const config = { ...this.defaults, ...options };\n    \n    // Build cookie string\n    let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;\n    \n    // Add expiration\n    if (config.expires) {\n      if (config.expires instanceof Date) {\n        cookieString += `; expires=${config.expires.toUTCString()}`;\n      } else if (typeof config.expires === 'number') {\n        // Treat as days from now\n        const date = new Date();\n        date.setTime(date.getTime() + (config.expires * 24 * 60 * 60 * 1000));\n        cookieString += `; expires=${date.toUTCString()}`;\n      }\n    }\n    \n    // Add max-age (takes precedence over expires)\n    if (config.maxAge !== undefined) {\n      cookieString += `; max-age=${config.maxAge}`;\n    }\n    \n    // Add path\n    if (config.path) {\n      cookieString += `; path=${config.path}`;\n    }\n    \n    // Add domain\n    if (config.domain) {\n      cookieString += `; domain=${config.domain}`;\n    }\n    \n    // Add secure flag\n    if (config.secure) {\n      cookieString += '; secure';\n    }\n    \n    // Add SameSite\n    if (config.sameSite) {\n      cookieString += `; samesite=${config.sameSite}`;\n    }\n    \n    try {\n      document.cookie = cookieString;\n      return true;\n    } catch (error) {\n      console.warn('Failed to set cookie:', error.message);\n      return false;\n    }\n  }\n  \n  /**\n   * Get a cookie value by name\n   */\n  get(name) {\n    if (typeof document === 'undefined') {\n      return null; // Node.js environment\n    }\n    \n    const encodedName = encodeURIComponent(name);\n    const cookies = this.getAll();\n    \n    return cookies[encodedName] !== undefined \n      ? decodeURIComponent(cookies[encodedName]) \n      : null;\n  }\n  \n  /**\n   * Get all cookies as an object\n   */\n  getAll() {\n    if (typeof document === 'undefined') {\n      return {};\n    }\n    \n    const cookies = {};\n    \n    if (document.cookie && document.cookie.trim() !== '') {\n      const cookiePairs = document.cookie.split(';');\n      \n      cookiePairs.forEach(pair => {\n        const [name, ...valueParts] = pair.split('=');\n        const value = valueParts.join('='); // Handle values with '=' in them\n        \n        if (name && name.trim()) {\n          const cleanName = name.trim();\n          const cleanValue = value ? value.trim() : '';\n          cookies[cleanName] = cleanValue;\n        }\n      });\n    }\n    \n    return cookies;\n  }\n  \n  /**\n   * Remove a cookie\n   */\n  remove(name, options = {}) {\n    // Set cookie with past expiration date\n    const removeOptions = {\n      ...options,\n      expires: new Date(0), // January 1, 1970\n      maxAge: -1\n    };\n    \n    return this.set(name, '', removeOptions);\n  }\n  \n  /**\n   * Check if a cookie exists\n   */\n  has(name) {\n    return this.get(name) !== null;\n  }\n  \n  /**\n   * Get all cookie names\n   */\n  getNames() {\n    const cookies = this.getAll();\n    return Object.keys(cookies).map(name => decodeURIComponent(name));\n  }\n  \n  /**\n   * Clear all cookies (that can be cleared)\n   */\n  clear(options = {}) {\n    const names = this.getNames();\n    let removedCount = 0;\n    \n    names.forEach(name => {\n      if (this.remove(name, options)) {\n        removedCount++;\n      }\n    });\n    \n    return removedCount;\n  }\n}\n\n// =======================\n// Approach 2: Advanced Cookie Store\n// =======================\n\n/**\n * Advanced cookie store with JSON support, encryption, and validation\n * Provides type-safe operations and advanced features\n */\nclass AdvancedCookieStore extends CookieManager {\n  constructor(options = {}) {\n    super(options);\n    \n    this.jsonPrefix = '_json_';\n    this.encryptedPrefix = '_enc_';\n    this.validators = new Map();\n    this.listeners = new Map();\n    \n    // Start monitoring for changes\n    this.startChangeMonitoring();\n  }\n  \n  /**\n   * Set JSON cookie with automatic serialization\n   */\n  setJSON(name, value, options = {}) {\n    try {\n      const serialized = JSON.stringify(value);\n      const prefixedName = this.jsonPrefix + name;\n      \n      return this.set(prefixedName, serialized, options);\n    } catch (error) {\n      console.warn('Failed to serialize JSON for cookie:', error.message);\n      return false;\n    }\n  }\n  \n  /**\n   * Get JSON cookie with automatic deserialization\n   */\n  getJSON(name) {\n    const prefixedName = this.jsonPrefix + name;\n    const value = this.get(prefixedName);\n    \n    if (value === null) return null;\n    \n    try {\n      return JSON.parse(value);\n    } catch (error) {\n      console.warn('Failed to parse JSON from cookie:', error.message);\n      return null;\n    }\n  }\n  \n  /**\n   * Remove JSON cookie\n   */\n  removeJSON(name, options = {}) {\n    const prefixedName = this.jsonPrefix + name;\n    return this.remove(prefixedName, options);\n  }\n  \n  /**\n   * Set encrypted cookie (demo encryption - use proper crypto in production)\n   */\n  setEncrypted(name, value, key, options = {}) {\n    try {\n      const encrypted = this.simpleEncrypt(JSON.stringify(value), key);\n      const prefixedName = this.encryptedPrefix + name;\n      \n      return this.set(prefixedName, encrypted, options);\n    } catch (error) {\n      console.warn('Failed to encrypt cookie:', error.message);\n      return false;\n    }\n  }\n  \n  /**\n   * Get encrypted cookie (demo decryption)\n   */\n  getEncrypted(name, key) {\n    const prefixedName = this.encryptedPrefix + name;\n    const encrypted = this.get(prefixedName);\n    \n    if (encrypted === null) return null;\n    \n    try {\n      const decrypted = this.simpleDecrypt(encrypted, key);\n      return JSON.parse(decrypted);\n    } catch (error) {\n      console.warn('Failed to decrypt cookie:', error.message);\n      return null;\n    }\n  }\n  \n  /**\n   * Simple encryption (demo - use proper encryption in production)\n   */\n  simpleEncrypt(text, key) {\n    let result = '';\n    for (let i = 0; i < text.length; i++) {\n      const char = text.charCodeAt(i);\n      const keyChar = key.charCodeAt(i % key.length);\n      result += String.fromCharCode(char ^ keyChar);\n    }\n    return btoa(result);\n  }\n  \n  /**\n   * Simple decryption\n   */\n  simpleDecrypt(encrypted, key) {\n    const text = atob(encrypted);\n    let result = '';\n    for (let i = 0; i < text.length; i++) {\n      const char = text.charCodeAt(i);\n      const keyChar = key.charCodeAt(i % key.length);\n      result += String.fromCharCode(char ^ keyChar);\n    }\n    return result;\n  }\n  \n  /**\n   * Add validator for cookie values\n   */\n  addValidator(name, validator) {\n    if (typeof validator !== 'function') {\n      throw new Error('Validator must be a function');\n    }\n    \n    this.validators.set(name, validator);\n    return this;\n  }\n  \n  /**\n   * Set cookie with validation\n   */\n  setWithValidation(name, value, options = {}) {\n    const validator = this.validators.get(name);\n    \n    if (validator) {\n      try {\n        const isValid = validator(value);\n        if (!isValid) {\n          throw new Error(`Validation failed for cookie: ${name}`);\n        }\n      } catch (error) {\n        console.warn('Cookie validation error:', error.message);\n        return false;\n      }\n    }\n    \n    return this.set(name, value, options);\n  }\n  \n  /**\n   * Batch operations\n   */\n  setBatch(cookies, options = {}) {\n    const results = {};\n    \n    Object.entries(cookies).forEach(([name, value]) => {\n      results[name] = this.set(name, value, options);\n    });\n    \n    return results;\n  }\n  \n  /**\n   * Get multiple cookies at once\n   */\n  getBatch(names) {\n    const results = {};\n    \n    names.forEach(name => {\n      results[name] = this.get(name);\n    });\n    \n    return results;\n  }\n  \n  /**\n   * Add change listener\n   */\n  addChangeListener(name, callback) {\n    if (!this.listeners.has(name)) {\n      this.listeners.set(name, new Set());\n    }\n    \n    this.listeners.get(name).add(callback);\n    \n    // Return unsubscribe function\n    return () => {\n      const listeners = this.listeners.get(name);\n      if (listeners) {\n        listeners.delete(callback);\n        if (listeners.size === 0) {\n          this.listeners.delete(name);\n        }\n      }\n    };\n  }\n  \n  /**\n   * Start monitoring for cookie changes\n   */\n  startChangeMonitoring() {\n    if (typeof document === 'undefined') return;\n    \n    let lastCookies = this.getAll();\n    \n    const checkForChanges = () => {\n      const currentCookies = this.getAll();\n      \n      // Check for changes\n      Object.keys({ ...lastCookies, ...currentCookies }).forEach(name => {\n        const oldValue = lastCookies[name];\n        const newValue = currentCookies[name];\n        \n        if (oldValue !== newValue) {\n          const decodedName = decodeURIComponent(name);\n          const listeners = this.listeners.get(decodedName);\n          \n          if (listeners) {\n            const event = {\n              name: decodedName,\n              oldValue: oldValue ? decodeURIComponent(oldValue) : null,\n              newValue: newValue ? decodeURIComponent(newValue) : null,\n              action: !oldValue ? 'set' : !newValue ? 'remove' : 'change'\n            };\n            \n            listeners.forEach(callback => {\n              try {\n                callback(event);\n              } catch (error) {\n                console.warn('Cookie change listener error:', error);\n              }\n            });\n          }\n        }\n      });\n      \n      lastCookies = currentCookies;\n    };\n    \n    // Check every 100ms (can be optimized based on needs)\n    this.changeMonitorInterval = setInterval(checkForChanges, 100);\n  }\n  \n  /**\n   * Stop change monitoring\n   */\n  stopChangeMonitoring() {\n    if (this.changeMonitorInterval) {\n      clearInterval(this.changeMonitorInterval);\n      this.changeMonitorInterval = null;\n    }\n  }\n  \n  /**\n   * Get cookie statistics and information\n   */\n  getStats() {\n    const cookies = this.getAll();\n    const names = Object.keys(cookies);\n    \n    let totalSize = 0;\n    let jsonCount = 0;\n    let encryptedCount = 0;\n    \n    const cookieInfo = names.map(name => {\n      const value = cookies[name];\n      const size = name.length + (value ? value.length : 0);\n      totalSize += size;\n      \n      const decodedName = decodeURIComponent(name);\n      const type = decodedName.startsWith(this.jsonPrefix) ? 'json' :\n                   decodedName.startsWith(this.encryptedPrefix) ? 'encrypted' : 'string';\n      \n      if (type === 'json') jsonCount++;\n      if (type === 'encrypted') encryptedCount++;\n      \n      return {\n        name: decodedName,\n        size,\n        type,\n        hasValidator: this.validators.has(decodedName),\n        hasListeners: this.listeners.has(decodedName)\n      };\n    });\n    \n    return {\n      totalCookies: names.length,\n      totalSize,\n      jsonCount,\n      encryptedCount,\n      averageSize: names.length > 0 ? Math.round(totalSize / names.length) : 0,\n      cookies: cookieInfo,\n      listeners: this.listeners.size,\n      validators: this.validators.size\n    };\n  }\n  \n  /**\n   * Import cookies from object\n   */\n  import(cookieObject, options = {}) {\n    const results = {};\n    \n    Object.entries(cookieObject).forEach(([name, value]) => {\n      try {\n        results[name] = this.set(name, value, options);\n      } catch (error) {\n        results[name] = false;\n        console.warn(`Failed to import cookie ${name}:`, error.message);\n      }\n    });\n    \n    return results;\n  }\n  \n  /**\n   * Export cookies to object\n   */\n  export(names = null) {\n    const cookies = this.getAll();\n    const result = {};\n    \n    const targetNames = names || Object.keys(cookies);\n    \n    targetNames.forEach(name => {\n      const encodedName = encodeURIComponent(name);\n      if (cookies[encodedName] !== undefined) {\n        result[name] = decodeURIComponent(cookies[encodedName]);\n      }\n    });\n    \n    return result;\n  }\n  \n  /**\n   * Cleanup and destroy\n   */\n  destroy() {\n    this.stopChangeMonitoring();\n    this.listeners.clear();\n    this.validators.clear();\n  }\n}\n\n// =======================\n// Approach 3: Cookie Utilities\n// =======================\n\n/**\n * Utility functions for cookie operations\n */\nconst CookieUtils = {\n  /**\n   * Parse cookie string into object\n   */\n  parse(cookieString) {\n    const cookies = {};\n    \n    if (!cookieString || typeof cookieString !== 'string') {\n      return cookies;\n    }\n    \n    cookieString.split(';').forEach(pair => {\n      const [name, ...valueParts] = pair.split('=');\n      const value = valueParts.join('=');\n      \n      if (name && name.trim()) {\n        const cleanName = decodeURIComponent(name.trim());\n        const cleanValue = value ? decodeURIComponent(value.trim()) : '';\n        cookies[cleanName] = cleanValue;\n      }\n    });\n    \n    return cookies;\n  },\n  \n  /**\n   * Serialize object to cookie string\n   */\n  serialize(name, value, options = {}) {\n    let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;\n    \n    if (options.expires) {\n      cookieString += `; expires=${options.expires.toUTCString()}`;\n    }\n    \n    if (options.maxAge !== undefined) {\n      cookieString += `; max-age=${options.maxAge}`;\n    }\n    \n    if (options.path) {\n      cookieString += `; path=${options.path}`;\n    }\n    \n    if (options.domain) {\n      cookieString += `; domain=${options.domain}`;\n    }\n    \n    if (options.secure) {\n      cookieString += '; secure';\n    }\n    \n    if (options.sameSite) {\n      cookieString += `; samesite=${options.sameSite}`;\n    }\n    \n    return cookieString;\n  },\n  \n  /**\n   * Check if cookies are supported\n   */\n  isSupported() {\n    if (typeof document === 'undefined') return false;\n    \n    try {\n      const testName = '_cookie_test_';\n      const testValue = 'test';\n      \n      document.cookie = `${testName}=${testValue}`;\n      const supported = document.cookie.includes(`${testName}=${testValue}`);\n      \n      // Clean up test cookie\n      document.cookie = `${testName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`;\n      \n      return supported;\n    } catch (error) {\n      return false;\n    }\n  },\n  \n  /**\n   * Get remaining space for cookies (approximate)\n   */\n  getRemainingSpace() {\n    if (typeof document === 'undefined') return 0;\n    \n    const currentSize = document.cookie.length;\n    const maxSize = 4096; // Approximate limit per domain\n    \n    return Math.max(0, maxSize - currentSize);\n  },\n  \n  /**\n   * Validate cookie name\n   */\n  isValidName(name) {\n    if (typeof name !== 'string' || name.trim() === '') {\n      return false;\n    }\n    \n    // RFC 6265 compliant name validation\n    const invalidChars = /[\\s\\t\\r\\n\\f;,=]/;\n    return !invalidChars.test(name);\n  },\n  \n  /**\n   * Sanitize cookie value\n   */\n  sanitizeValue(value) {\n    if (typeof value !== 'string') {\n      value = String(value);\n    }\n    \n    // Remove or escape problematic characters\n    return value.replace(/[;,\\r\\n]/g, '');\n  }\n};\n\n// Create default instances\nconst cookies = new CookieManager();\nconst advancedCookies = new AdvancedCookieStore();\n\n// Export for use in other modules\nmodule.exports = {\n  CookieManager,\n  AdvancedCookieStore,\n  CookieUtils,\n  cookies,\n  advancedCookies\n};
+class CookieManager {
+  constructor(options = {}) {
+    this.defaults = {
+      path: '/',
+      domain: null,
+      secure: false,
+      sameSite: 'Lax',
+      httpOnly: false // Note: Can't be set via JavaScript
+    };
+
+    // Merge with provided defaults
+    this.defaults = { ...this.defaults, ...options };
+  }
+
+  /**
+   * Set a cookie with options
+   */
+  set(name, value, options = {}) {
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Cookie name must be a non-empty string');
+    }
+
+    // Merge with defaults
+    const config = { ...this.defaults, ...options };
+
+    // Build cookie string
+    let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+
+    // Add expiration
+    if (config.expires) {
+      if (config.expires instanceof Date) {
+        cookieString += `; expires=${config.expires.toUTCString()}`;
+      } else if (typeof config.expires === 'number') {
+        // Treat as days from now
+        const date = new Date();
+        date.setTime(date.getTime() + (config.expires * 24 * 60 * 60 * 1000));
+        cookieString += `; expires=${date.toUTCString()}`;
+      }
+    }
+
+    // Add max-age (takes precedence over expires)
+    if (config.maxAge !== undefined) {
+      cookieString += `; max-age=${config.maxAge}`;
+    }
+
+    // Add path
+    if (config.path) {
+      cookieString += `; path=${config.path}`;
+    }
+
+    // Add domain
+    if (config.domain) {
+      cookieString += `; domain=${config.domain}`;
+    }
+
+    // Add secure flag
+    if (config.secure) {
+      cookieString += '; secure';
+    }
+
+    // Add SameSite
+    if (config.sameSite) {
+      cookieString += `; samesite=${config.sameSite}`;
+    }
+
+    try {
+      document.cookie = cookieString;
+      return true;
+    } catch (error) {
+      console.warn('Failed to set cookie:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Get a cookie value by name
+   */
+  get(name) {
+    if (typeof document === 'undefined') {
+      return null; // Node.js environment
+    }
+
+    const encodedName = encodeURIComponent(name);
+    const cookies = this.getAll();
+
+    return cookies[encodedName] !== undefined
+      ? decodeURIComponent(cookies[encodedName])
+      : null;
+  }
+
+  /**
+   * Get all cookies as an object
+   */
+  getAll() {
+    if (typeof document === 'undefined') {
+      return {};
+    }
+
+    const cookies = {};
+
+    if (document.cookie && document.cookie.trim() !== '') {
+      const cookiePairs = document.cookie.split(';');
+
+      cookiePairs.forEach(pair => {
+        const [name, ...valueParts] = pair.split('=');
+        const value = valueParts.join('='); // Handle values with '=' in them
+
+        if (name && name.trim()) {
+          const cleanName = name.trim();
+          const cleanValue = value ? value.trim() : '';
+          cookies[cleanName] = cleanValue;
+        }
+      });
+    }
+
+    return cookies;
+  }
+
+  /**
+   * Remove a cookie
+   */
+  remove(name, options = {}) {
+    // Set cookie with past expiration date
+    const removeOptions = {
+      ...options,
+      expires: new Date(0), // January 1, 1970
+      maxAge: -1
+    };
+
+    return this.set(name, '', removeOptions);
+  }
+
+  /**
+   * Check if a cookie exists
+   */
+  has(name) {
+    return this.get(name) !== null;
+  }
+
+  /**
+   * Get all cookie names
+   */
+  getNames() {
+    const cookies = this.getAll();
+    return Object.keys(cookies).map(name => decodeURIComponent(name));
+  }
+
+  /**
+   * Clear all cookies (that can be cleared)
+   */
+  clear(options = {}) {
+    const names = this.getNames();
+    let removedCount = 0;
+
+    names.forEach(name => {
+      if (this.remove(name, options)) {
+        removedCount++;
+      }
+    });
+
+    return removedCount;
+  }
+}
+
+// =======================
+// Approach 2: Advanced Cookie Store
+// =======================
+
+/**
+ * Advanced cookie store with JSON support, encryption, and validation
+ * Provides type-safe operations and advanced features
+ */
+class AdvancedCookieStore extends CookieManager {
+  constructor(options = {}) {
+    super(options);
+
+    this.jsonPrefix = '_json_';
+    this.encryptedPrefix = '_enc_';
+    this.validators = new Map();
+    this.listeners = new Map();
+
+    // Start monitoring for changes
+    this.startChangeMonitoring();
+  }
+
+  /**
+   * Set JSON cookie with automatic serialization
+   */
+  setJSON(name, value, options = {}) {
+    try {
+      const serialized = JSON.stringify(value);
+      const prefixedName = this.jsonPrefix + name;
+
+      return this.set(prefixedName, serialized, options);
+    } catch (error) {
+      console.warn('Failed to serialize JSON for cookie:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Get JSON cookie with automatic deserialization
+   */
+  getJSON(name) {
+    const prefixedName = this.jsonPrefix + name;
+    const value = this.get(prefixedName);
+
+    if (value === null) return null;
+
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      console.warn('Failed to parse JSON from cookie:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Remove JSON cookie
+   */
+  removeJSON(name, options = {}) {
+    const prefixedName = this.jsonPrefix + name;
+    return this.remove(prefixedName, options);
+  }
+
+  /**
+   * Set encrypted cookie (demo encryption - use proper crypto in production)
+   */
+  setEncrypted(name, value, key, options = {}) {
+    try {
+      const encrypted = this.simpleEncrypt(JSON.stringify(value), key);
+      const prefixedName = this.encryptedPrefix + name;
+
+      return this.set(prefixedName, encrypted, options);
+    } catch (error) {
+      console.warn('Failed to encrypt cookie:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Get encrypted cookie (demo decryption)
+   */
+  getEncrypted(name, key) {
+    const prefixedName = this.encryptedPrefix + name;
+    const encrypted = this.get(prefixedName);
+
+    if (encrypted === null) return null;
+
+    try {
+      const decrypted = this.simpleDecrypt(encrypted, key);
+      return JSON.parse(decrypted);
+    } catch (error) {
+      console.warn('Failed to decrypt cookie:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Simple encryption (demo - use proper encryption in production)
+   */
+  simpleEncrypt(text, key) {
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const char = text.charCodeAt(i);
+      const keyChar = key.charCodeAt(i % key.length);
+      result += String.fromCharCode(char ^ keyChar);
+    }
+    return btoa(result);
+  }
+
+  /**
+   * Simple decryption
+   */
+  simpleDecrypt(encrypted, key) {
+    const text = atob(encrypted);
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const char = text.charCodeAt(i);
+      const keyChar = key.charCodeAt(i % key.length);
+      result += String.fromCharCode(char ^ keyChar);
+    }
+    return result;
+  }
+
+  /**
+   * Add validator for cookie values
+   */
+  addValidator(name, validator) {
+    if (typeof validator !== 'function') {
+      throw new Error('Validator must be a function');
+    }
+
+    this.validators.set(name, validator);
+    return this;
+  }
+
+  /**
+   * Set cookie with validation
+   */
+  setWithValidation(name, value, options = {}) {
+    const validator = this.validators.get(name);
+
+    if (validator) {
+      try {
+        const isValid = validator(value);
+        if (!isValid) {
+          throw new Error(`Validation failed for cookie: ${name}`);
+        }
+      } catch (error) {
+        console.warn('Cookie validation error:', error.message);
+        return false;
+      }
+    }
+
+    return this.set(name, value, options);
+  }
+
+  /**
+   * Batch operations
+   */
+  setBatch(cookies, options = {}) {
+    const results = {};
+
+    Object.entries(cookies).forEach(([name, value]) => {
+      results[name] = this.set(name, value, options);
+    });
+
+    return results;
+  }
+
+  /**
+   * Get multiple cookies at once
+   */
+  getBatch(names) {
+    const results = {};
+
+    names.forEach(name => {
+      results[name] = this.get(name);
+    });
+
+    return results;
+  }
+
+  /**
+   * Add change listener
+   */
+  addChangeListener(name, callback) {
+    if (!this.listeners.has(name)) {
+      this.listeners.set(name, new Set());
+    }
+
+    this.listeners.get(name).add(callback);
+
+    // Return unsubscribe function
+    return () => {
+      const listeners = this.listeners.get(name);
+      if (listeners) {
+        listeners.delete(callback);
+        if (listeners.size === 0) {
+          this.listeners.delete(name);
+        }
+      }
+    };
+  }
+
+  /**
+   * Start monitoring for cookie changes
+   */
+  startChangeMonitoring() {
+    if (typeof document === 'undefined') return;
+
+    let lastCookies = this.getAll();
+
+    const checkForChanges = () => {
+      const currentCookies = this.getAll();
+
+      // Check for changes
+      Object.keys({ ...lastCookies, ...currentCookies }).forEach(name => {
+        const oldValue = lastCookies[name];
+        const newValue = currentCookies[name];
+
+        if (oldValue !== newValue) {
+          const decodedName = decodeURIComponent(name);
+          const listeners = this.listeners.get(decodedName);
+
+          if (listeners) {
+            const event = {
+              name: decodedName,
+              oldValue: oldValue ? decodeURIComponent(oldValue) : null,
+              newValue: newValue ? decodeURIComponent(newValue) : null,
+              action: !oldValue ? 'set' : !newValue ? 'remove' : 'change'
+            };
+
+            listeners.forEach(callback => {
+              try {
+                callback(event);
+              } catch (error) {
+                console.warn('Cookie change listener error:', error);
+              }
+            });
+          }
+        }
+      });
+
+      lastCookies = currentCookies;
+    };
+
+    // Check every 100ms (can be optimized based on needs)
+    this.changeMonitorInterval = setInterval(checkForChanges, 100);
+  }
+
+  /**
+   * Stop change monitoring
+   */
+  stopChangeMonitoring() {
+    if (this.changeMonitorInterval) {
+      clearInterval(this.changeMonitorInterval);
+      this.changeMonitorInterval = null;
+    }
+  }
+
+  /**
+   * Get cookie statistics and information
+   */
+  getStats() {
+    const cookies = this.getAll();
+    const names = Object.keys(cookies);
+
+    let totalSize = 0;
+    let jsonCount = 0;
+    let encryptedCount = 0;
+
+    const cookieInfo = names.map(name => {
+      const value = cookies[name];
+      const size = name.length + (value ? value.length : 0);
+      totalSize += size;
+
+      const decodedName = decodeURIComponent(name);
+      const type = decodedName.startsWith(this.jsonPrefix) ? 'json' :
+                   decodedName.startsWith(this.encryptedPrefix) ? 'encrypted' : 'string';
+
+      if (type === 'json') jsonCount++;
+      if (type === 'encrypted') encryptedCount++;
+
+      return {
+        name: decodedName,
+        size,
+        type,
+        hasValidator: this.validators.has(decodedName),
+        hasListeners: this.listeners.has(decodedName)
+      };
+    });
+
+    return {
+      totalCookies: names.length,
+      totalSize,
+      jsonCount,
+      encryptedCount,
+      averageSize: names.length > 0 ? Math.round(totalSize / names.length) : 0,
+      cookies: cookieInfo,
+      listeners: this.listeners.size,
+      validators: this.validators.size
+    };
+  }
+
+  /**
+   * Import cookies from object
+   */
+  import(cookieObject, options = {}) {
+    const results = {};
+
+    Object.entries(cookieObject).forEach(([name, value]) => {
+      try {
+        results[name] = this.set(name, value, options);
+      } catch (error) {
+        results[name] = false;
+        console.warn(`Failed to import cookie ${name}:`, error.message);
+      }
+    });
+
+    return results;
+  }
+
+  /**
+   * Export cookies to object
+   */
+  export(names = null) {
+    const cookies = this.getAll();
+    const result = {};
+
+    const targetNames = names || Object.keys(cookies);
+
+    targetNames.forEach(name => {
+      const encodedName = encodeURIComponent(name);
+      if (cookies[encodedName] !== undefined) {
+        result[name] = decodeURIComponent(cookies[encodedName]);
+      }
+    });
+
+    return result;
+  }
+
+  /**
+   * Cleanup and destroy
+   */
+  destroy() {
+    this.stopChangeMonitoring();
+    this.listeners.clear();
+    this.validators.clear();
+  }
+}
+
+// =======================
+// Approach 3: Cookie Utilities
+// =======================
+
+/**
+ * Utility functions for cookie operations
+ */
+const CookieUtils = {
+  /**
+   * Parse cookie string into object
+   */
+  parse(cookieString) {
+    const cookies = {};
+
+    if (!cookieString || typeof cookieString !== 'string') {
+      return cookies;
+    }
+
+    cookieString.split(';').forEach(pair => {
+      const [name, ...valueParts] = pair.split('=');
+      const value = valueParts.join('=');
+
+      if (name && name.trim()) {
+        const cleanName = decodeURIComponent(name.trim());
+        const cleanValue = value ? decodeURIComponent(value.trim()) : '';
+        cookies[cleanName] = cleanValue;
+      }
+    });
+
+    return cookies;
+  },
+
+  /**
+   * Serialize object to cookie string
+   */
+  serialize(name, value, options = {}) {
+    let cookieString = `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+
+    if (options.expires) {
+      cookieString += `; expires=${options.expires.toUTCString()}`;
+    }
+
+    if (options.maxAge !== undefined) {
+      cookieString += `; max-age=${options.maxAge}`;
+    }
+
+    if (options.path) {
+      cookieString += `; path=${options.path}`;
+    }
+
+    if (options.domain) {
+      cookieString += `; domain=${options.domain}`;
+    }
+
+    if (options.secure) {
+      cookieString += '; secure';
+    }
+
+    if (options.sameSite) {
+      cookieString += `; samesite=${options.sameSite}`;
+    }
+
+    return cookieString;
+  },
+
+  /**
+   * Check if cookies are supported
+   */
+  isSupported() {
+    if (typeof document === 'undefined') return false;
+
+    try {
+      const testName = '_cookie_test_';
+      const testValue = 'test';
+
+      document.cookie = `${testName}=${testValue}`;
+      const supported = document.cookie.includes(`${testName}=${testValue}`);
+
+      // Clean up test cookie
+      document.cookie = `${testName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+
+      return supported;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  /**
+   * Get remaining space for cookies (approximate)
+   */
+  getRemainingSpace() {
+    if (typeof document === 'undefined') return 0;
+
+    const currentSize = document.cookie.length;
+    const maxSize = 4096; // Approximate limit per domain
+
+    return Math.max(0, maxSize - currentSize);
+  },
+
+  /**
+   * Validate cookie name
+   */
+  isValidName(name) {
+    if (typeof name !== 'string' || name.trim() === '') {
+      return false;
+    }
+
+    // RFC 6265 compliant name validation
+    const invalidChars = /[\s\t\r\n\f;,=]/;
+    return !invalidChars.test(name);
+  },
+
+  /**
+   * Sanitize cookie value
+   */
+  sanitizeValue(value) {
+    if (typeof value !== 'string') {
+      value = String(value);
+    }
+
+    // Remove or escape problematic characters
+    return value.replace(/[;,\r\n]/g, '');
+  }
+};
+
+// Create default instances
+const cookies = new CookieManager();
+const advancedCookies = new AdvancedCookieStore();
+
+// Export for use in other modules
+module.exports = {
+  CookieManager,
+  AdvancedCookieStore,
+  CookieUtils,
+  cookies,
+  advancedCookies
+};

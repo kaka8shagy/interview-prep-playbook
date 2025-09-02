@@ -21,4 +21,670 @@
  * 
  * Mental model: SQL-like WHERE clause for JavaScript objects
  */
-function filterObjectsBasic(objects, filters) {\n  if (!Array.isArray(objects)) {\n    throw new Error('Objects must be an array');\n  }\n  \n  if (!filters || typeof filters !== 'object') {\n    return objects;\n  }\n  \n  return objects.filter(obj => {\n    return Object.entries(filters).every(([key, expectedValue]) => {\n      const actualValue = getNestedValue(obj, key);\n      \n      // Handle different comparison types\n      if (typeof expectedValue === 'function') {\n        return expectedValue(actualValue, obj);\n      }\n      \n      if (expectedValue && typeof expectedValue === 'object' && expectedValue.$operator) {\n        return applyOperator(actualValue, expectedValue);\n      }\n      \n      // Direct comparison\n      return actualValue === expectedValue;\n    });\n  });\n}\n\n/**\n * Get nested property value using dot notation\n */\nfunction getNestedValue(obj, path) {\n  if (!obj || typeof obj !== 'object') {\n    return undefined;\n  }\n  \n  return path.split('.').reduce((current, key) => {\n    return current && current[key] !== undefined ? current[key] : undefined;\n  }, obj);\n}\n\n/**\n * Apply comparison operators\n */\nfunction applyOperator(actualValue, filter) {\n  const { $operator, $value } = filter;\n  \n  switch ($operator) {\n    case '$gt': return actualValue > $value;\n    case '$gte': return actualValue >= $value;\n    case '$lt': return actualValue < $value;\n    case '$lte': return actualValue <= $value;\n    case '$ne': return actualValue !== $value;\n    case '$in': return Array.isArray($value) && $value.includes(actualValue);\n    case '$nin': return Array.isArray($value) && !$value.includes(actualValue);\n    case '$regex': return new RegExp($value).test(String(actualValue));\n    case '$exists': return $value ? actualValue !== undefined : actualValue === undefined;\n    case '$type': return typeof actualValue === $value;\n    default: return actualValue === $value;\n  }\n}\n\n// =======================\n// Approach 2: Advanced Query Engine\n// =======================\n\n/**\n * Advanced object query engine with indexing and optimization\n * Supports complex queries, sorting, and pagination\n */\nclass ObjectQueryEngine {\n  constructor(objects = []) {\n    this.objects = objects;\n    this.indexes = new Map(); // Property indexes for fast lookup\n    this.queryCache = new Map(); // Query result cache\n    this.cacheMaxSize = 100;\n  }\n  \n  /**\n   * Set data and rebuild indexes\n   */\n  setData(objects) {\n    this.objects = objects;\n    this.clearIndexes();\n    this.clearCache();\n    return this;\n  }\n  \n  /**\n   * Add data and update indexes\n   */\n  addData(newObjects) {\n    if (!Array.isArray(newObjects)) {\n      newObjects = [newObjects];\n    }\n    \n    this.objects.push(...newObjects);\n    \n    // Update existing indexes\n    for (const [property, index] of this.indexes) {\n      this.updateIndex(property, newObjects);\n    }\n    \n    this.clearCache();\n    return this;\n  }\n  \n  /**\n   * Create index for faster filtering\n   */\n  createIndex(property) {\n    const index = new Map();\n    \n    this.objects.forEach((obj, objIndex) => {\n      const value = getNestedValue(obj, property);\n      \n      if (value !== undefined) {\n        if (!index.has(value)) {\n          index.set(value, []);\n        }\n        index.get(value).push(objIndex);\n      }\n    });\n    \n    this.indexes.set(property, index);\n    return this;\n  }\n  \n  /**\n   * Update existing index with new objects\n   */\n  updateIndex(property, newObjects) {\n    const index = this.indexes.get(property);\n    if (!index) return;\n    \n    const startIndex = this.objects.length - newObjects.length;\n    \n    newObjects.forEach((obj, relativeIndex) => {\n      const value = getNestedValue(obj, property);\n      const objIndex = startIndex + relativeIndex;\n      \n      if (value !== undefined) {\n        if (!index.has(value)) {\n          index.set(value, []);\n        }\n        index.get(value).push(objIndex);\n      }\n    });\n  }\n  \n  /**\n   * Advanced filter with multiple strategies\n   */\n  filter(query, options = {}) {\n    const {\n      useIndex = true,\n      useCache = true,\n      limit = null,\n      offset = 0,\n      sort = null\n    } = options;\n    \n    // Check cache first\n    const cacheKey = JSON.stringify({ query, limit, offset, sort });\n    if (useCache && this.queryCache.has(cacheKey)) {\n      return this.queryCache.get(cacheKey);\n    }\n    \n    let candidateIndices = null;\n    \n    // Try to use indexes for optimization\n    if (useIndex && typeof query === 'object') {\n      candidateIndices = this.findCandidatesUsingIndexes(query);\n    }\n    \n    // Filter objects\n    let results;\n    if (candidateIndices !== null) {\n      // Use indexed approach\n      results = candidateIndices\n        .map(index => this.objects[index])\n        .filter(obj => this.matchesQuery(obj, query));\n    } else {\n      // Full scan approach\n      results = this.objects.filter(obj => this.matchesQuery(obj, query));\n    }\n    \n    // Apply sorting\n    if (sort) {\n      results = this.sortResults(results, sort);\n    }\n    \n    // Apply pagination\n    if (offset > 0 || limit !== null) {\n      const start = offset;\n      const end = limit !== null ? start + limit : undefined;\n      results = results.slice(start, end);\n    }\n    \n    // Cache results\n    if (useCache) {\n      this.addToCache(cacheKey, results);\n    }\n    \n    return results;\n  }\n  \n  /**\n   * Find candidate object indices using indexes\n   */\n  findCandidatesUsingIndexes(query) {\n    const indexedFilters = [];\n    const nonIndexedFilters = [];\n    \n    // Separate indexed and non-indexed filters\n    for (const [property, filter] of Object.entries(query)) {\n      if (this.indexes.has(property) && this.canUseIndexForFilter(filter)) {\n        indexedFilters.push([property, filter]);\n      } else {\n        nonIndexedFilters.push([property, filter]);\n      }\n    }\n    \n    if (indexedFilters.length === 0) {\n      return null; // No usable indexes\n    }\n    \n    // Start with the most selective index\n    let candidateIndices = null;\n    \n    for (const [property, filter] of indexedFilters) {\n      const index = this.indexes.get(property);\n      const matchingIndices = this.getIndexMatches(index, filter);\n      \n      if (candidateIndices === null) {\n        candidateIndices = new Set(matchingIndices);\n      } else {\n        // Intersect with existing candidates\n        candidateIndices = new Set(\n          matchingIndices.filter(idx => candidateIndices.has(idx))\n        );\n      }\n      \n      // Early termination if no candidates left\n      if (candidateIndices.size === 0) {\n        break;\n      }\n    }\n    \n    return candidateIndices ? Array.from(candidateIndices) : null;\n  }\n  \n  /**\n   * Check if filter can use index\n   */\n  canUseIndexForFilter(filter) {\n    if (typeof filter === 'function') return false;\n    \n    if (filter && typeof filter === 'object' && filter.$operator) {\n      // Only certain operators can use indexes efficiently\n      return ['$in', '$ne'].includes(filter.$operator);\n    }\n    \n    return true; // Direct equality\n  }\n  \n  /**\n   * Get matching indices from index\n   */\n  getIndexMatches(index, filter) {\n    if (typeof filter === 'function') {\n      return []; // Can't use index\n    }\n    \n    if (filter && typeof filter === 'object' && filter.$operator) {\n      const { $operator, $value } = filter;\n      \n      switch ($operator) {\n        case '$in':\n          const indices = [];\n          if (Array.isArray($value)) {\n            for (const val of $value) {\n              if (index.has(val)) {\n                indices.push(...index.get(val));\n              }\n            }\n          }\n          return indices;\n          \n        case '$ne':\n          const allIndices = [];\n          for (const [value, objectIndices] of index) {\n            if (value !== $value) {\n              allIndices.push(...objectIndices);\n            }\n          }\n          return allIndices;\n          \n        default:\n          return []; // Other operators need full scan\n      }\n    }\n    \n    // Direct equality\n    return index.has(filter) ? index.get(filter) : [];\n  }\n  \n  /**\n   * Check if object matches query\n   */\n  matchesQuery(obj, query) {\n    if (typeof query === 'function') {\n      return query(obj);\n    }\n    \n    if (typeof query !== 'object' || query === null) {\n      return true;\n    }\n    \n    return Object.entries(query).every(([key, filter]) => {\n      const value = getNestedValue(obj, key);\n      \n      if (typeof filter === 'function') {\n        return filter(value, obj);\n      }\n      \n      if (filter && typeof filter === 'object' && filter.$operator) {\n        return applyOperator(value, filter);\n      }\n      \n      return value === filter;\n    });\n  }\n  \n  /**\n   * Sort results\n   */\n  sortResults(results, sortConfig) {\n    if (typeof sortConfig === 'string') {\n      // Simple property sort\n      return results.sort((a, b) => {\n        const aVal = getNestedValue(a, sortConfig);\n        const bVal = getNestedValue(b, sortConfig);\n        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;\n      });\n    }\n    \n    if (Array.isArray(sortConfig)) {\n      // Multi-property sort\n      return results.sort((a, b) => {\n        for (const sortItem of sortConfig) {\n          const { property, direction = 'asc' } = \n            typeof sortItem === 'string' \n              ? { property: sortItem, direction: 'asc' }\n              : sortItem;\n              \n          const aVal = getNestedValue(a, property);\n          const bVal = getNestedValue(b, property);\n          \n          let comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;\n          if (direction === 'desc') comparison *= -1;\n          \n          if (comparison !== 0) return comparison;\n        }\n        return 0;\n      });\n    }\n    \n    return results;\n  }\n  \n  /**\n   * Add to cache with LRU eviction\n   */\n  addToCache(key, value) {\n    if (this.queryCache.size >= this.cacheMaxSize) {\n      // Remove oldest entry\n      const firstKey = this.queryCache.keys().next().value;\n      this.queryCache.delete(firstKey);\n    }\n    \n    this.queryCache.set(key, value);\n  }\n  \n  /**\n   * Clear all indexes\n   */\n  clearIndexes() {\n    this.indexes.clear();\n    return this;\n  }\n  \n  /**\n   * Clear query cache\n   */\n  clearCache() {\n    this.queryCache.clear();\n    return this;\n  }\n  \n  /**\n   * Get query statistics\n   */\n  getStats() {\n    return {\n      objectCount: this.objects.length,\n      indexCount: this.indexes.size,\n      cachedQueries: this.queryCache.size,\n      indexes: Array.from(this.indexes.keys())\n    };\n  }\n}\n\n// =======================\n// Approach 3: Specialized Filters\n// =======================\n\n/**\n * Collection of specialized filter functions\n */\nconst SpecializedFilters = {\n  /**\n   * Filter by date range\n   */\n  dateRange(objects, dateProperty, startDate, endDate) {\n    const start = new Date(startDate).getTime();\n    const end = new Date(endDate).getTime();\n    \n    return objects.filter(obj => {\n      const dateValue = getNestedValue(obj, dateProperty);\n      if (!dateValue) return false;\n      \n      const timestamp = new Date(dateValue).getTime();\n      return timestamp >= start && timestamp <= end;\n    });\n  },\n  \n  /**\n   * Filter by text search (fuzzy matching)\n   */\n  textSearch(objects, searchProperties, query, options = {}) {\n    const {\n      caseSensitive = false,\n      fuzzy = false,\n      minScore = 0.3\n    } = options;\n    \n    const searchQuery = caseSensitive ? query : query.toLowerCase();\n    \n    return objects.filter(obj => {\n      return searchProperties.some(property => {\n        const value = getNestedValue(obj, property);\n        if (typeof value !== 'string') return false;\n        \n        const text = caseSensitive ? value : value.toLowerCase();\n        \n        if (fuzzy) {\n          const score = calculateSimilarity(text, searchQuery);\n          return score >= minScore;\n        }\n        \n        return text.includes(searchQuery);\n      });\n    });\n  },\n  \n  /**\n   * Filter by numeric range with tolerance\n   */\n  numericRange(objects, property, min, max, tolerance = 0) {\n    return objects.filter(obj => {\n      const value = getNestedValue(obj, property);\n      if (typeof value !== 'number') return false;\n      \n      return value >= (min - tolerance) && value <= (max + tolerance);\n    });\n  },\n  \n  /**\n   * Filter by array intersection\n   */\n  arrayIntersection(objects, property, targetArray) {\n    return objects.filter(obj => {\n      const value = getNestedValue(obj, property);\n      if (!Array.isArray(value)) return false;\n      \n      return targetArray.some(item => value.includes(item));\n    });\n  },\n  \n  /**\n   * Filter by geographic proximity (simple distance)\n   */\n  geoProximity(objects, latProperty, lngProperty, centerLat, centerLng, maxDistance) {\n    return objects.filter(obj => {\n      const lat = getNestedValue(obj, latProperty);\n      const lng = getNestedValue(obj, lngProperty);\n      \n      if (typeof lat !== 'number' || typeof lng !== 'number') return false;\n      \n      const distance = calculateDistance(lat, lng, centerLat, centerLng);\n      return distance <= maxDistance;\n    });\n  }\n};\n\n/**\n * Calculate string similarity (simple Levenshtein-based)\n */\nfunction calculateSimilarity(str1, str2) {\n  const longer = str1.length > str2.length ? str1 : str2;\n  const shorter = str1.length > str2.length ? str2 : str1;\n  \n  if (longer.length === 0) return 1.0;\n  \n  const distance = levenshteinDistance(longer, shorter);\n  return (longer.length - distance) / longer.length;\n}\n\n/**\n * Calculate Levenshtein distance\n */\nfunction levenshteinDistance(str1, str2) {\n  const matrix = [];\n  \n  for (let i = 0; i <= str2.length; i++) {\n    matrix[i] = [i];\n  }\n  \n  for (let j = 0; j <= str1.length; j++) {\n    matrix[0][j] = j;\n  }\n  \n  for (let i = 1; i <= str2.length; i++) {\n    for (let j = 1; j <= str1.length; j++) {\n      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {\n        matrix[i][j] = matrix[i - 1][j - 1];\n      } else {\n        matrix[i][j] = Math.min(\n          matrix[i - 1][j - 1] + 1, // substitution\n          matrix[i][j - 1] + 1,     // insertion\n          matrix[i - 1][j] + 1      // deletion\n        );\n      }\n    }\n  }\n  \n  return matrix[str2.length][str1.length];\n}\n\n/**\n * Calculate distance between two points (simplified)\n */\nfunction calculateDistance(lat1, lng1, lat2, lng2) {\n  const R = 6371; // Earth's radius in km\n  const dLat = (lat2 - lat1) * Math.PI / 180;\n  const dLng = (lng2 - lng1) * Math.PI / 180;\n  \n  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +\n    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *\n    Math.sin(dLng / 2) * Math.sin(dLng / 2);\n    \n  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n  return R * c;\n}\n\n// =======================\n// Real-world Examples\n// =======================\n\n// Example: E-commerce product filtering\nfunction filterProducts(products, filters) {\n  const engine = new ObjectQueryEngine(products);\n  \n  // Create indexes for common filter properties\n  engine.createIndex('category')\n         .createIndex('brand')\n         .createIndex('inStock');\n  \n  return engine.filter({\n    category: filters.category,\n    'price': { $operator: '$lte', $value: filters.maxPrice },\n    inStock: true,\n    'rating': { $operator: '$gte', $value: filters.minRating || 0 }\n  }, {\n    sort: [{ property: 'price', direction: 'asc' }],\n    limit: filters.limit\n  });\n}\n\n// Example: User search with multiple criteria\nfunction searchUsers(users, searchCriteria) {\n  const {\n    name,\n    ageRange,\n    location,\n    skills,\n    joinedAfter\n  } = searchCriteria;\n  \n  let filtered = users;\n  \n  // Apply text search on name\n  if (name) {\n    filtered = SpecializedFilters.textSearch(\n      filtered,\n      ['firstName', 'lastName', 'username'],\n      name,\n      { fuzzy: true, minScore: 0.4 }\n    );\n  }\n  \n  // Apply age range filter\n  if (ageRange) {\n    filtered = SpecializedFilters.numericRange(\n      filtered,\n      'age',\n      ageRange.min,\n      ageRange.max\n    );\n  }\n  \n  // Apply location filter\n  if (location) {\n    filtered = SpecializedFilters.geoProximity(\n      filtered,\n      'location.lat',\n      'location.lng',\n      location.lat,\n      location.lng,\n      location.radius\n    );\n  }\n  \n  // Apply skills filter\n  if (skills && skills.length > 0) {\n    filtered = SpecializedFilters.arrayIntersection(\n      filtered,\n      'skills',\n      skills\n    );\n  }\n  \n  // Apply date filter\n  if (joinedAfter) {\n    filtered = SpecializedFilters.dateRange(\n      filtered,\n      'joinedDate',\n      joinedAfter,\n      new Date()\n    );\n  }\n  \n  return filtered;\n}\n\n// Export for use in other modules\nmodule.exports = {\n  filterObjectsBasic,\n  ObjectQueryEngine,\n  SpecializedFilters,\n  getNestedValue,\n  applyOperator,\n  calculateSimilarity,\n  filterProducts,\n  searchUsers\n};
+function filterObjectsBasic(objects, filters) {
+  if (!Array.isArray(objects)) {
+    throw new Error('Objects must be an array');
+  }
+  
+  if (!filters || typeof filters !== 'object') {
+    return objects;
+  }
+  
+  return objects.filter(obj => {
+    return Object.entries(filters).every(([key, expectedValue]) => {
+      const actualValue = getNestedValue(obj, key);
+      
+      // Handle different comparison types
+      if (typeof expectedValue === 'function') {
+        return expectedValue(actualValue, obj);
+      }
+      
+      if (expectedValue && typeof expectedValue === 'object' && expectedValue.$operator) {
+        return applyOperator(actualValue, expectedValue);
+      }
+      
+      // Direct comparison
+      return actualValue === expectedValue;
+    });
+  });
+}
+
+/**
+ * Get nested property value using dot notation
+ */
+function getNestedValue(obj, path) {
+  if (!obj || typeof obj !== 'object') {
+    return undefined;
+  }
+  
+  return path.split('.').reduce((current, key) => {
+    return current && current[key] !== undefined ? current[key] : undefined;
+  }, obj);
+}
+
+/**
+ * Apply comparison operators
+ */
+function applyOperator(actualValue, filter) {
+  const { $operator, $value } = filter;
+  
+  switch ($operator) {
+    case '$gt': return actualValue > $value;
+    case '$gte': return actualValue >= $value;
+    case '$lt': return actualValue < $value;
+    case '$lte': return actualValue <= $value;
+    case '$ne': return actualValue !== $value;
+    case '$in': return Array.isArray($value) && $value.includes(actualValue);
+    case '$nin': return Array.isArray($value) && !$value.includes(actualValue);
+    case '$regex': return new RegExp($value).test(String(actualValue));
+    case '$exists': return $value ? actualValue !== undefined : actualValue === undefined;
+    case '$type': return typeof actualValue === $value;
+    default: return actualValue === $value;
+  }
+}
+
+// =======================
+// Approach 2: Advanced Query Engine
+// =======================
+
+/**
+ * Advanced object query engine with indexing and optimization
+ * Supports complex queries, sorting, and pagination
+ */
+class ObjectQueryEngine {
+  constructor(objects = []) {
+    this.objects = objects;
+    this.indexes = new Map(); // Property indexes for fast lookup
+    this.queryCache = new Map(); // Query result cache
+    this.cacheMaxSize = 100;
+  }
+  
+  /**
+   * Set data and rebuild indexes
+   */
+  setData(objects) {
+    this.objects = objects;
+    this.clearIndexes();
+    this.clearCache();
+    return this;
+  }
+  
+  /**
+   * Add data and update indexes
+   */
+  addData(newObjects) {
+    if (!Array.isArray(newObjects)) {
+      newObjects = [newObjects];
+    }
+    
+    this.objects.push(...newObjects);
+    
+    // Update existing indexes
+    for (const [property, index] of this.indexes) {
+      this.updateIndex(property, newObjects);
+    }
+    
+    this.clearCache();
+    return this;
+  }
+  
+  /**
+   * Create index for faster filtering
+   */
+  createIndex(property) {
+    const index = new Map();
+    
+    this.objects.forEach((obj, objIndex) => {
+      const value = getNestedValue(obj, property);
+      
+      if (value !== undefined) {
+        if (!index.has(value)) {
+          index.set(value, []);
+        }
+        index.get(value).push(objIndex);
+      }
+    });
+    
+    this.indexes.set(property, index);
+    return this;
+  }
+  
+  /**
+   * Update existing index with new objects
+   */
+  updateIndex(property, newObjects) {
+    const index = this.indexes.get(property);
+    if (!index) return;
+    
+    const startIndex = this.objects.length - newObjects.length;
+    
+    newObjects.forEach((obj, relativeIndex) => {
+      const value = getNestedValue(obj, property);
+      const objIndex = startIndex + relativeIndex;
+      
+      if (value !== undefined) {
+        if (!index.has(value)) {
+          index.set(value, []);
+        }
+        index.get(value).push(objIndex);
+      }
+    });
+  }
+  
+  /**
+   * Advanced filter with multiple strategies
+   */
+  filter(query, options = {}) {
+    const {
+      useIndex = true,
+      useCache = true,
+      limit = null,
+      offset = 0,
+      sort = null
+    } = options;
+    
+    // Check cache first
+    const cacheKey = JSON.stringify({ query, limit, offset, sort });
+    if (useCache && this.queryCache.has(cacheKey)) {
+      return this.queryCache.get(cacheKey);
+    }
+    
+    let candidateIndices = null;
+    
+    // Try to use indexes for optimization
+    if (useIndex && typeof query === 'object') {
+      candidateIndices = this.findCandidatesUsingIndexes(query);
+    }
+    
+    // Filter objects
+    let results;
+    if (candidateIndices !== null) {
+      // Use indexed approach
+      results = candidateIndices
+        .map(index => this.objects[index])
+        .filter(obj => this.matchesQuery(obj, query));
+    } else {
+      // Full scan approach
+      results = this.objects.filter(obj => this.matchesQuery(obj, query));
+    }
+    
+    // Apply sorting
+    if (sort) {
+      results = this.sortResults(results, sort);
+    }
+    
+    // Apply pagination
+    if (offset > 0 || limit !== null) {
+      const start = offset;
+      const end = limit !== null ? start + limit : undefined;
+      results = results.slice(start, end);
+    }
+    
+    // Cache results
+    if (useCache) {
+      this.addToCache(cacheKey, results);
+    }
+    
+    return results;
+  }
+  
+  /**
+   * Find candidate object indices using indexes
+   */
+  findCandidatesUsingIndexes(query) {
+    const indexedFilters = [];
+    const nonIndexedFilters = [];
+    
+    // Separate indexed and non-indexed filters
+    for (const [property, filter] of Object.entries(query)) {
+      if (this.indexes.has(property) && this.canUseIndexForFilter(filter)) {
+        indexedFilters.push([property, filter]);
+      } else {
+        nonIndexedFilters.push([property, filter]);
+      }
+    }
+    
+    if (indexedFilters.length === 0) {
+      return null; // No usable indexes
+    }
+    
+    // Start with the most selective index
+    let candidateIndices = null;
+    
+    for (const [property, filter] of indexedFilters) {
+      const index = this.indexes.get(property);
+      const matchingIndices = this.getIndexMatches(index, filter);
+      
+      if (candidateIndices === null) {
+        candidateIndices = new Set(matchingIndices);
+      } else {
+        // Intersect with existing candidates
+        candidateIndices = new Set(
+          matchingIndices.filter(idx => candidateIndices.has(idx))
+        );
+      }
+      
+      // Early termination if no candidates left
+      if (candidateIndices.size === 0) {
+        break;
+      }
+    }
+    
+    return candidateIndices ? Array.from(candidateIndices) : null;
+  }
+  
+  /**
+   * Check if filter can use index
+   */
+  canUseIndexForFilter(filter) {
+    if (typeof filter === 'function') return false;
+    
+    if (filter && typeof filter === 'object' && filter.$operator) {
+      // Only certain operators can use indexes efficiently
+      return ['$in', '$ne'].includes(filter.$operator);
+    }
+    
+    return true; // Direct equality
+  }
+  
+  /**
+   * Get matching indices from index
+   */
+  getIndexMatches(index, filter) {
+    if (typeof filter === 'function') {
+      return []; // Can't use index
+    }
+    
+    if (filter && typeof filter === 'object' && filter.$operator) {
+      const { $operator, $value } = filter;
+      
+      switch ($operator) {
+        case '$in':
+          const indices = [];
+          if (Array.isArray($value)) {
+            for (const val of $value) {
+              if (index.has(val)) {
+                indices.push(...index.get(val));
+              }
+            }
+          }
+          return indices;
+          
+        case '$ne':
+          const allIndices = [];
+          for (const [value, objectIndices] of index) {
+            if (value !== $value) {
+              allIndices.push(...objectIndices);
+            }
+          }
+          return allIndices;
+          
+        default:
+          return []; // Other operators need full scan
+      }
+    }
+    
+    // Direct equality
+    return index.has(filter) ? index.get(filter) : [];
+  }
+  
+  /**
+   * Check if object matches query
+   */
+  matchesQuery(obj, query) {
+    if (typeof query === 'function') {
+      return query(obj);
+    }
+    
+    if (typeof query !== 'object' || query === null) {
+      return true;
+    }
+    
+    return Object.entries(query).every(([key, filter]) => {
+      const value = getNestedValue(obj, key);
+      
+      if (typeof filter === 'function') {
+        return filter(value, obj);
+      }
+      
+      if (filter && typeof filter === 'object' && filter.$operator) {
+        return applyOperator(value, filter);
+      }
+      
+      return value === filter;
+    });
+  }
+  
+  /**
+   * Sort results
+   */
+  sortResults(results, sortConfig) {
+    if (typeof sortConfig === 'string') {
+      // Simple property sort
+      return results.sort((a, b) => {
+        const aVal = getNestedValue(a, sortConfig);
+        const bVal = getNestedValue(b, sortConfig);
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      });
+    }
+    
+    if (Array.isArray(sortConfig)) {
+      // Multi-property sort
+      return results.sort((a, b) => {
+        for (const sortItem of sortConfig) {
+          const { property, direction = 'asc' } = 
+            typeof sortItem === 'string' 
+              ? { property: sortItem, direction: 'asc' }
+              : sortItem;
+              
+          const aVal = getNestedValue(a, property);
+          const bVal = getNestedValue(b, property);
+          
+          let comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+          if (direction === 'desc') comparison *= -1;
+          
+          if (comparison !== 0) return comparison;
+        }
+        return 0;
+      });
+    }
+    
+    return results;
+  }
+  
+  /**
+   * Add to cache with LRU eviction
+   */
+  addToCache(key, value) {
+    if (this.queryCache.size >= this.cacheMaxSize) {
+      // Remove oldest entry
+      const firstKey = this.queryCache.keys().next().value;
+      this.queryCache.delete(firstKey);
+    }
+    
+    this.queryCache.set(key, value);
+  }
+  
+  /**
+   * Clear all indexes
+   */
+  clearIndexes() {
+    this.indexes.clear();
+    return this;
+  }
+  
+  /**
+   * Clear query cache
+   */
+  clearCache() {
+    this.queryCache.clear();
+    return this;
+  }
+  
+  /**
+   * Get query statistics
+   */
+  getStats() {
+    return {
+      objectCount: this.objects.length,
+      indexCount: this.indexes.size,
+      cachedQueries: this.queryCache.size,
+      indexes: Array.from(this.indexes.keys())
+    };
+  }
+}
+
+// =======================
+// Approach 3: Specialized Filters
+// =======================
+
+/**
+ * Collection of specialized filter functions
+ */
+const SpecializedFilters = {
+  /**
+   * Filter by date range
+   */
+  dateRange(objects, dateProperty, startDate, endDate) {
+    const start = new Date(startDate).getTime();
+    const end = new Date(endDate).getTime();
+    
+    return objects.filter(obj => {
+      const dateValue = getNestedValue(obj, dateProperty);
+      if (!dateValue) return false;
+      
+      const timestamp = new Date(dateValue).getTime();
+      return timestamp >= start && timestamp <= end;
+    });
+  },
+  
+  /**
+   * Filter by text search (fuzzy matching)
+   */
+  textSearch(objects, searchProperties, query, options = {}) {
+    const {
+      caseSensitive = false,
+      fuzzy = false,
+      minScore = 0.3
+    } = options;
+    
+    const searchQuery = caseSensitive ? query : query.toLowerCase();
+    
+    return objects.filter(obj => {
+      return searchProperties.some(property => {
+        const value = getNestedValue(obj, property);
+        if (typeof value !== 'string') return false;
+        
+        const text = caseSensitive ? value : value.toLowerCase();
+        
+        if (fuzzy) {
+          const score = calculateSimilarity(text, searchQuery);
+          return score >= minScore;
+        }
+        
+        return text.includes(searchQuery);
+      });
+    });
+  },
+  
+  /**
+   * Filter by numeric range with tolerance
+   */
+  numericRange(objects, property, min, max, tolerance = 0) {
+    return objects.filter(obj => {
+      const value = getNestedValue(obj, property);
+      if (typeof value !== 'number') return false;
+      
+      return value >= (min - tolerance) && value <= (max + tolerance);
+    });
+  },
+  
+  /**
+   * Filter by array intersection
+   */
+  arrayIntersection(objects, property, targetArray) {
+    return objects.filter(obj => {
+      const value = getNestedValue(obj, property);
+      if (!Array.isArray(value)) return false;
+      
+      return targetArray.some(item => value.includes(item));
+    });
+  },
+  
+  /**
+   * Filter by geographic proximity (simple distance)
+   */
+  geoProximity(objects, latProperty, lngProperty, centerLat, centerLng, maxDistance) {
+    return objects.filter(obj => {
+      const lat = getNestedValue(obj, latProperty);
+      const lng = getNestedValue(obj, lngProperty);
+      
+      if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+      
+      const distance = calculateDistance(lat, lng, centerLat, centerLng);
+      return distance <= maxDistance;
+    });
+  }
+};
+
+/**
+ * Calculate string similarity (simple Levenshtein-based)
+ */
+function calculateSimilarity(str1, str2) {
+  const longer = str1.length > str2.length ? str1 : str2;
+  const shorter = str1.length > str2.length ? str2 : str1;
+  
+  if (longer.length === 0) return 1.0;
+  
+  const distance = levenshteinDistance(longer, shorter);
+  return (longer.length - distance) / longer.length;
+}
+
+/**
+ * Calculate Levenshtein distance
+ */
+function levenshteinDistance(str1, str2) {
+  const matrix = [];
+  
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  
+  return matrix[str2.length][str1.length];
+}
+
+/**
+ * Calculate distance between two points (simplified)
+ */
+function calculateDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// =======================
+// Real-world Examples
+// =======================
+
+// Example: E-commerce product filtering
+function filterProducts(products, filters) {
+  const engine = new ObjectQueryEngine(products);
+  
+  // Create indexes for common filter properties
+  engine.createIndex('category')
+         .createIndex('brand')
+         .createIndex('inStock');
+  
+  return engine.filter({
+    category: filters.category,
+    'price': { $operator: '$lte', $value: filters.maxPrice },
+    inStock: true,
+    'rating': { $operator: '$gte', $value: filters.minRating || 0 }
+  }, {
+    sort: [{ property: 'price', direction: 'asc' }],
+    limit: filters.limit
+  });
+}
+
+// Example: User search with multiple criteria
+function searchUsers(users, searchCriteria) {
+  const {
+    name,
+    ageRange,
+    location,
+    skills,
+    joinedAfter
+  } = searchCriteria;
+  
+  let filtered = users;
+  
+  // Apply text search on name
+  if (name) {
+    filtered = SpecializedFilters.textSearch(
+      filtered,
+      ['firstName', 'lastName', 'username'],
+      name,
+      { fuzzy: true, minScore: 0.4 }
+    );
+  }
+  
+  // Apply age range filter
+  if (ageRange) {
+    filtered = SpecializedFilters.numericRange(
+      filtered,
+      'age',
+      ageRange.min,
+      ageRange.max
+    );
+  }
+  
+  // Apply location filter
+  if (location) {
+    filtered = SpecializedFilters.geoProximity(
+      filtered,
+      'location.lat',
+      'location.lng',
+      location.lat,
+      location.lng,
+      location.radius
+    );
+  }
+  
+  // Apply skills filter
+  if (skills && skills.length > 0) {
+    filtered = SpecializedFilters.arrayIntersection(
+      filtered,
+      'skills',
+      skills
+    );
+  }
+  
+  // Apply date filter
+  if (joinedAfter) {
+    filtered = SpecializedFilters.dateRange(
+      filtered,
+      'joinedDate',
+      joinedAfter,
+      new Date()
+    );
+  }
+  
+  return filtered;
+}
+
+// Export for use in other modules
+module.exports = {
+  filterObjectsBasic,
+  ObjectQueryEngine,
+  SpecializedFilters,
+  getNestedValue,
+  applyOperator,
+  calculateSimilarity,
+  filterProducts,
+  searchUsers
+};

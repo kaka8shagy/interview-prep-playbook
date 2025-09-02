@@ -337,4 +337,390 @@ class AsyncArrayIterator {
       return { value: undefined, done: true };
     }
     
-    const batch = [];\n    const startIndex = this.index;\n    \n    // Process batch\n    for (let i = 0; i < this.batchSize && this.index < this.array.length; i++) {\n      const rawValue = this.array[this.index++];\n      \n      try {\n        // Apply async processor\n        const processedValue = await this.processor(rawValue, this.index - 1);\n        \n        batch.push({\n          value: processedValue,\n          originalValue: rawValue,\n          index: this.index - 1\n        });\n        \n        // Add delay if specified\n        if (this.delay > 0) {\n          await new Promise(resolve => setTimeout(resolve, this.delay));\n        }\n        \n      } catch (error) {\n        batch.push({\n          error: error,\n          originalValue: rawValue,\n          index: this.index - 1\n        });\n      }\n      \n      // Report progress\n      this.onProgress({\n        processed: this.index,\n        total: this.array.length,\n        percentage: (this.index / this.array.length * 100).toFixed(1),\n        currentBatch: batch.length\n      });\n    }\n    \n    return {\n      value: this.batchSize === 1 ? batch[0] : batch,\n      done: false\n    };\n  }\n  \n  /**\n   * Async iterator protocol\n   */\n  [Symbol.asyncIterator]() {\n    return this;\n  }\n  \n  /**\n   * Process all remaining items\n   */\n  async processAll() {\n    const results = [];\n    \n    for await (const item of this) {\n      if (Array.isArray(item)) {\n        results.push(...item);\n      } else {\n        results.push(item);\n      }\n    }\n    \n    return results;\n  }\n  \n  /**\n   * Process with error collection\n   */\n  async processWithErrorHandling() {\n    const results = [];\n    const errors = [];\n    \n    for await (const item of this) {\n      const items = Array.isArray(item) ? item : [item];\n      \n      for (const processedItem of items) {\n        if (processedItem.error) {\n          errors.push({\n            error: processedItem.error,\n            index: processedItem.index,\n            value: processedItem.originalValue\n          });\n        } else {\n          results.push(processedItem);\n        }\n      }\n    }\n    \n    return { results, errors };\n  }\n}\n\n// =======================\n// Approach 5: Generator-Based Iterators\n// =======================\n\n/**\n * Generator-based array iterator with various patterns\n * Demonstrates different generator approaches\n */\nclass GeneratorArrayIterator {\n  constructor(array) {\n    this.array = array;\n  }\n  \n  /**\n   * Basic generator iterator\n   */\n  *[Symbol.iterator]() {\n    for (let i = 0; i < this.array.length; i++) {\n      yield {\n        value: this.array[i],\n        index: i,\n        isFirst: i === 0,\n        isLast: i === this.array.length - 1\n      };\n    }\n  }\n  \n  /**\n   * Windowed iterator - yields sliding windows\n   */\n  *windows(size = 2) {\n    if (size <= 0 || size > this.array.length) return;\n    \n    for (let i = 0; i <= this.array.length - size; i++) {\n      yield {\n        window: this.array.slice(i, i + size),\n        startIndex: i,\n        endIndex: i + size - 1\n      };\n    }\n  }\n  \n  /**\n   * Chunked iterator - yields fixed-size chunks\n   */\n  *chunks(size = 2) {\n    for (let i = 0; i < this.array.length; i += size) {\n      yield {\n        chunk: this.array.slice(i, i + size),\n        chunkIndex: Math.floor(i / size),\n        startIndex: i,\n        endIndex: Math.min(i + size - 1, this.array.length - 1)\n      };\n    }\n  }\n  \n  /**\n   * Paired iterator - yields pairs of adjacent elements\n   */\n  *pairs() {\n    for (let i = 0; i < this.array.length - 1; i++) {\n      yield {\n        pair: [this.array[i], this.array[i + 1]],\n        indices: [i, i + 1]\n      };\n    }\n  }\n  \n  /**\n   * Indexed iterator with custom step\n   */\n  *step(stepSize = 1) {\n    for (let i = 0; i < this.array.length; i += stepSize) {\n      yield {\n        value: this.array[i],\n        index: i,\n        step: stepSize\n      };\n    }\n  }\n  \n  /**\n   * Async generator for delayed processing\n   */\n  async *async(delay = 100) {\n    for (let i = 0; i < this.array.length; i++) {\n      await new Promise(resolve => setTimeout(resolve, delay));\n      \n      yield {\n        value: this.array[i],\n        index: i,\n        timestamp: Date.now()\n      };\n    }\n  }\n}\n\n// =======================\n// Utility Functions and Helpers\n// =======================\n\n/**\n * Create iterator from array with options\n */\nfunction createArrayIterator(array, type = 'basic', options = {}) {\n  switch (type) {\n    case 'basic':\n      return new BasicArrayIterator(array, options.startIndex);\n      \n    case 'filtering':\n      return new FilteringArrayIterator(array, options);\n      \n    case 'bidirectional':\n      return new BidirectionalArrayIterator(array);\n      \n    case 'async':\n      return new AsyncArrayIterator(array, options);\n      \n    case 'generator':\n      return new GeneratorArrayIterator(array);\n      \n    default:\n      throw new Error(`Unknown iterator type: ${type}`);\n  }\n}\n\n/**\n * Iterator utilities\n */\nconst IteratorUtils = {\n  /**\n   * Convert iterator to array\n   */\n  toArray(iterator) {\n    const results = [];\n    let item;\n    \n    while (!(item = iterator.next()).done) {\n      results.push(item.value);\n    }\n    \n    return results;\n  },\n  \n  /**\n   * Take first n items from iterator\n   */\n  take(iterator, n) {\n    const results = [];\n    let count = 0;\n    let item;\n    \n    while (count < n && !(item = iterator.next()).done) {\n      results.push(item.value);\n      count++;\n    }\n    \n    return results;\n  },\n  \n  /**\n   * Skip n items from iterator\n   */\n  skip(iterator, n) {\n    let count = 0;\n    let item;\n    \n    while (count < n && !(item = iterator.next()).done) {\n      count++;\n    }\n    \n    return iterator;\n  },\n  \n  /**\n   * Find first item matching predicate\n   */\n  find(iterator, predicate) {\n    let item;\n    \n    while (!(item = iterator.next()).done) {\n      if (predicate(item.value)) {\n        return item.value;\n      }\n    }\n    \n    return undefined;\n  },\n  \n  /**\n   * Count items in iterator\n   */\n  count(iterator) {\n    let count = 0;\n    let item;\n    \n    while (!(item = iterator.next()).done) {\n      count++;\n    }\n    \n    return count;\n  },\n  \n  /**\n   * Chain multiple iterators\n   */\n  chain(...iterators) {\n    return {\n      *[Symbol.iterator]() {\n        for (const iterator of iterators) {\n          yield* iterator;\n        }\n      }\n    };\n  }\n};\n\n// =======================\n// Real-world Examples\n// =======================\n\n// Example: Process large dataset with progress\nasync function processLargeDataset(data, processor) {\n  const iterator = new AsyncArrayIterator(data, {\n    processor,\n    batchSize: 10,\n    delay: 10,\n    onProgress: (progress) => {\n      console.log(`Processing: ${progress.percentage}% complete`);\n    }\n  });\n  \n  return await iterator.processWithErrorHandling();\n}\n\n// Example: Sliding window analysis\nfunction analyzeWithSlidingWindow(timeSeries, windowSize = 5) {\n  const iterator = new GeneratorArrayIterator(timeSeries);\n  const results = [];\n  \n  for (const window of iterator.windows(windowSize)) {\n    const avg = window.window.reduce((a, b) => a + b, 0) / window.window.length;\n    results.push({\n      startIndex: window.startIndex,\n      endIndex: window.endIndex,\n      values: window.window,\n      average: avg\n    });\n  }\n  \n  return results;\n}\n\n// Example: Batch processing with error handling\nasync function batchProcess(items, batchProcessor, batchSize = 5) {\n  const iterator = new GeneratorArrayIterator(items);\n  const results = [];\n  const errors = [];\n  \n  for (const chunk of iterator.chunks(batchSize)) {\n    try {\n      const batchResult = await batchProcessor(chunk.chunk);\n      results.push({\n        chunkIndex: chunk.chunkIndex,\n        result: batchResult\n      });\n    } catch (error) {\n      errors.push({\n        chunkIndex: chunk.chunkIndex,\n        error: error,\n        items: chunk.chunk\n      });\n    }\n  }\n  \n  return { results, errors };\n}\n\n// Export for use in other modules\nmodule.exports = {\n  BasicArrayIterator,\n  FilteringArrayIterator,\n  BidirectionalArrayIterator,\n  AsyncArrayIterator,\n  GeneratorArrayIterator,\n  createArrayIterator,\n  IteratorUtils,\n  processLargeDataset,\n  analyzeWithSlidingWindow,\n  batchProcess\n};
+    const batch = [];
+    const startIndex = this.index;
+    
+    // Process batch
+    for (let i = 0; i < this.batchSize && this.index < this.array.length; i++) {
+      const rawValue = this.array[this.index++];
+      
+      try {
+        // Apply async processor
+        const processedValue = await this.processor(rawValue, this.index - 1);
+        
+        batch.push({
+          value: processedValue,
+          originalValue: rawValue,
+          index: this.index - 1
+        });
+        
+        // Add delay if specified
+        if (this.delay > 0) {
+          await new Promise(resolve => setTimeout(resolve, this.delay));
+        }
+        
+      } catch (error) {
+        batch.push({
+          error: error,
+          originalValue: rawValue,
+          index: this.index - 1
+        });
+      }
+      
+      // Report progress
+      this.onProgress({
+        processed: this.index,
+        total: this.array.length,
+        percentage: (this.index / this.array.length * 100).toFixed(1),
+        currentBatch: batch.length
+      });
+    }
+    
+    return {
+      value: this.batchSize === 1 ? batch[0] : batch,
+      done: false
+    };
+  }
+  
+  /**
+   * Async iterator protocol
+   */
+  [Symbol.asyncIterator]() {
+    return this;
+  }
+  
+  /**
+   * Process all remaining items
+   */
+  async processAll() {
+    const results = [];
+    
+    for await (const item of this) {
+      if (Array.isArray(item)) {
+        results.push(...item);
+      } else {
+        results.push(item);
+      }
+    }
+    
+    return results;
+  }
+  
+  /**
+   * Process with error collection
+   */
+  async processWithErrorHandling() {
+    const results = [];
+    const errors = [];
+    
+    for await (const item of this) {
+      const items = Array.isArray(item) ? item : [item];
+      
+      for (const processedItem of items) {
+        if (processedItem.error) {
+          errors.push({
+            error: processedItem.error,
+            index: processedItem.index,
+            value: processedItem.originalValue
+          });
+        } else {
+          results.push(processedItem);
+        }
+      }
+    }
+    
+    return { results, errors };
+  }
+}
+
+// =======================
+// Approach 5: Generator-Based Iterators
+// =======================
+
+/**
+ * Generator-based array iterator with various patterns
+ * Demonstrates different generator approaches
+ */
+class GeneratorArrayIterator {
+  constructor(array) {
+    this.array = array;
+  }
+  
+  /**
+   * Basic generator iterator
+   */
+  *[Symbol.iterator]() {
+    for (let i = 0; i < this.array.length; i++) {
+      yield {
+        value: this.array[i],
+        index: i,
+        isFirst: i === 0,
+        isLast: i === this.array.length - 1
+      };
+    }
+  }
+  
+  /**
+   * Windowed iterator - yields sliding windows
+   */
+  *windows(size = 2) {
+    if (size <= 0 || size > this.array.length) return;
+    
+    for (let i = 0; i <= this.array.length - size; i++) {
+      yield {
+        window: this.array.slice(i, i + size),
+        startIndex: i,
+        endIndex: i + size - 1
+      };
+    }
+  }
+  
+  /**
+   * Chunked iterator - yields fixed-size chunks
+   */
+  *chunks(size = 2) {
+    for (let i = 0; i < this.array.length; i += size) {
+      yield {
+        chunk: this.array.slice(i, i + size),
+        chunkIndex: Math.floor(i / size),
+        startIndex: i,
+        endIndex: Math.min(i + size - 1, this.array.length - 1)
+      };
+    }
+  }
+  
+  /**
+   * Paired iterator - yields pairs of adjacent elements
+   */
+  *pairs() {
+    for (let i = 0; i < this.array.length - 1; i++) {
+      yield {
+        pair: [this.array[i], this.array[i + 1]],
+        indices: [i, i + 1]
+      };
+    }
+  }
+  
+  /**
+   * Indexed iterator with custom step
+   */
+  *step(stepSize = 1) {
+    for (let i = 0; i < this.array.length; i += stepSize) {
+      yield {
+        value: this.array[i],
+        index: i,
+        step: stepSize
+      };
+    }
+  }
+  
+  /**
+   * Async generator for delayed processing
+   */
+  async *async(delay = 100) {
+    for (let i = 0; i < this.array.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      yield {
+        value: this.array[i],
+        index: i,
+        timestamp: Date.now()
+      };
+    }
+  }
+}
+
+// =======================
+// Utility Functions and Helpers
+// =======================
+
+/**
+ * Create iterator from array with options
+ */
+function createArrayIterator(array, type = 'basic', options = {}) {
+  switch (type) {
+    case 'basic':
+      return new BasicArrayIterator(array, options.startIndex);
+      
+    case 'filtering':
+      return new FilteringArrayIterator(array, options);
+      
+    case 'bidirectional':
+      return new BidirectionalArrayIterator(array);
+      
+    case 'async':
+      return new AsyncArrayIterator(array, options);
+      
+    case 'generator':
+      return new GeneratorArrayIterator(array);
+      
+    default:
+      throw new Error(`Unknown iterator type: ${type}`);
+  }
+}
+
+/**
+ * Iterator utilities
+ */
+const IteratorUtils = {
+  /**
+   * Convert iterator to array
+   */
+  toArray(iterator) {
+    const results = [];
+    let item;
+    
+    while (!(item = iterator.next()).done) {
+      results.push(item.value);
+    }
+    
+    return results;
+  },
+  
+  /**
+   * Take first n items from iterator
+   */
+  take(iterator, n) {
+    const results = [];
+    let count = 0;
+    let item;
+    
+    while (count < n && !(item = iterator.next()).done) {
+      results.push(item.value);
+      count++;
+    }
+    
+    return results;
+  },
+  
+  /**
+   * Skip n items from iterator
+   */
+  skip(iterator, n) {
+    let count = 0;
+    let item;
+    
+    while (count < n && !(item = iterator.next()).done) {
+      count++;
+    }
+    
+    return iterator;
+  },
+  
+  /**
+   * Find first item matching predicate
+   */
+  find(iterator, predicate) {
+    let item;
+    
+    while (!(item = iterator.next()).done) {
+      if (predicate(item.value)) {
+        return item.value;
+      }
+    }
+    
+    return undefined;
+  },
+  
+  /**
+   * Count items in iterator
+   */
+  count(iterator) {
+    let count = 0;
+    let item;
+    
+    while (!(item = iterator.next()).done) {
+      count++;
+    }
+    
+    return count;
+  },
+  
+  /**
+   * Chain multiple iterators
+   */
+  chain(...iterators) {
+    return {
+      *[Symbol.iterator]() {
+        for (const iterator of iterators) {
+          yield* iterator;
+        }
+      }
+    };
+  }
+};
+
+// =======================
+// Real-world Examples
+// =======================
+
+// Example: Process large dataset with progress
+async function processLargeDataset(data, processor) {
+  const iterator = new AsyncArrayIterator(data, {
+    processor,
+    batchSize: 10,
+    delay: 10,
+    onProgress: (progress) => {
+      console.log(`Processing: ${progress.percentage}% complete`);
+    }
+  });
+  
+  return await iterator.processWithErrorHandling();
+}
+
+// Example: Sliding window analysis
+function analyzeWithSlidingWindow(timeSeries, windowSize = 5) {
+  const iterator = new GeneratorArrayIterator(timeSeries);
+  const results = [];
+  
+  for (const window of iterator.windows(windowSize)) {
+    const avg = window.window.reduce((a, b) => a + b, 0) / window.window.length;
+    results.push({
+      startIndex: window.startIndex,
+      endIndex: window.endIndex,
+      values: window.window,
+      average: avg
+    });
+  }
+  
+  return results;
+}
+
+// Example: Batch processing with error handling
+async function batchProcess(items, batchProcessor, batchSize = 5) {
+  const iterator = new GeneratorArrayIterator(items);
+  const results = [];
+  const errors = [];
+  
+  for (const chunk of iterator.chunks(batchSize)) {
+    try {
+      const batchResult = await batchProcessor(chunk.chunk);
+      results.push({
+        chunkIndex: chunk.chunkIndex,
+        result: batchResult
+      });
+    } catch (error) {
+      errors.push({
+        chunkIndex: chunk.chunkIndex,
+        error: error,
+        items: chunk.chunk
+      });
+    }
+  }
+  
+  return { results, errors };
+}
+
+// Export for use in other modules
+module.exports = {
+  BasicArrayIterator,
+  FilteringArrayIterator,
+  BidirectionalArrayIterator,
+  AsyncArrayIterator,
+  GeneratorArrayIterator,
+  createArrayIterator,
+  IteratorUtils,
+  processLargeDataset,
+  analyzeWithSlidingWindow,
+  batchProcess
+};

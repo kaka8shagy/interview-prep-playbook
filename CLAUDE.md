@@ -15,6 +15,7 @@
 - Code file naming: `descriptive-name.js`, `example-1.py`, `solution.sql`
 - Exception: Single-line examples for syntax reference only
 - Exception: Code blocks up to 10 lines may be included inline for simple examples
+- **Exception: Coding problems** - For interview coding challenges, JavaScript files can contain both problem statement and implementation with extensive comments explaining the approach, complexity, and interview considerations
 
 ### File Naming Conventions
 - Use kebab-case for all files and directories
